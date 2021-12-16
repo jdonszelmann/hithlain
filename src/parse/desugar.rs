@@ -6,7 +6,7 @@ use std::rc::Rc;
 use thiserror::Error;
 use miette::{Diagnostic, NamedSource, SourceSpan};
 use crate::parse::scope::{Scope, VariableType, VariableRef, DuplicateDefinition};
-use crate::parse::ast::{Variable, Expr, BinaryAction, Atom, StatementOrTime, NaryAction};
+use crate::parse::ast::{Variable, Expr, BinaryAction, Atom, StatementOrTime, NaryAction, UnaryAction};
 use std::sync::atomic::Ordering;
 use crate::error::Warn;
 use crate::time::Instant;
@@ -127,7 +127,7 @@ pub fn desugar_program(p: a::Program) -> Result<d::Program, DesugarError> {
 
                 desugared_circuits.push(i)
             },
-            Err(mut needed) => {
+            Err(needed) => {
                 delayed.entry(c).and_modify(|i: &mut Vec<Variable>| {
                     i.extend_from_slice(&needed);
                 }).or_insert(needed);
@@ -216,7 +216,7 @@ fn desugar_circuit(circuit: &a::Circuit, circuit_names: &mut HashMap<&a::Variabl
     Ok(Ok(Rc::new(d::Circuit {
         inputs,
         outputs,
-        body: vec![]
+        body
     })))
 }
 
@@ -311,21 +311,42 @@ fn desugar_timed_blocks(statements: &Vec<a::StatementOrTime>, blocks: &mut Vec<d
 fn desugar_statement(statement: &a::Statement, circuit_names: &mut HashMap<&a::Variable, Option<Rc<d::Circuit>>>, scope: &mut Scope) -> Result<Result<Vec<d::Statement>, DesugarError>, Vec<Variable>> {
     let mut res = Vec::new();
 
-    let mut res_vars = Vec::new();
-    for i in &statement.into {
-        let var = match scope.lookup_variable_write(i) {
-            Ok(i) => i,
-            Err(e) => return Ok(Err(e.into())),
-        };
+    match statement {
+        a::Statement::Assignment(a) => {
+            let mut res_vars = Vec::new();
+            for i in &a.into {
+                let var = match scope.lookup_variable_write(i) {
+                    Ok(i) => i,
+                    Err(e) => return Ok(Err(e.into())),
+                };
 
-        res_vars.push(var);
+                res_vars.push(var);
+            }
+
+            match desugar_expr(&a.expr, res_vars, &mut res, circuit_names, scope) {
+                Ok(Ok(_)) => Ok(Ok(res)),
+                Err(needed) => Err(needed),
+                Ok(Err(e)) => Ok(Err(e))
+            }
+        }
+        a::Statement::Assert { expr, span } => {
+            let a_var = match scope.define_temp_variable() {
+                Ok(i) => i,
+                Err(e) => return Ok(Err(e.into())),
+            };
+
+            match desugar_expr(expr, vec![a_var.clone()], &mut res, circuit_names, scope) {
+                Ok(Ok(_)) => (),
+                Err(needed) => return Err(needed),
+                Ok(Err(e)) => return Ok(Err(e))
+            }
+
+            res.push(Statement::Assert(a_var, span.clone()));
+
+            Ok(Ok(res))
+        }
     }
 
-    match desugar_expr(&statement.expr, res_vars, &mut res, circuit_names, scope) {
-        Ok(Ok(_)) => Ok(Ok(res)),
-        Err(needed) => Err(needed),
-        Ok(Err(e)) => Ok(Err(e))
-    }
 }
 
 fn desugar_expr(expr: &a::Expr, into: Vec<VariableRef>, res: &mut Vec<d::Statement>, circuit_names: &mut HashMap<&a::Variable, Option<Rc<d::Circuit>>>, scope: &mut Scope) -> Result<Result<(), DesugarError>, Vec<Variable>> {
@@ -437,7 +458,16 @@ fn desugar_expr(expr: &a::Expr, into: Vec<VariableRef>, res: &mut Vec<d::Stateme
              }
 
              match action {
-                 NaryAction::UnaryAction(_) => unimplemented!(),
+                 NaryAction::UnaryAction(action) => {
+                     match action {
+                         UnaryAction::Not => {
+                             res.push(Statement::Not {
+                                 input: get_first!(param_vars),
+                                 into: get_first!(into),
+                             })
+                         }
+                     }
+                 },
                  NaryAction::BinaryAction(_) => unimplemented!(),
                  NaryAction::Custom(c) => {
                      if let Some(circuit_exists) = circuit_names.get(c) {

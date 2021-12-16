@@ -2,7 +2,7 @@ use logos::Span as LogosSpan;
 use miette::SourceSpan;
 use crate::parse::source::Source;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Span {
     start: usize,
     length: usize,

@@ -2,7 +2,9 @@ use std::rc::Rc;
 use crate::parse::ast::{Constant, Variable};
 use crate::time::Instant;
 use crate::sim::instantiate::UniqueVariableRef;
+use crate::parse::span::Span;
 
+#[derive(Debug)]
 pub enum Condition {
     AtTime {
         time: Instant,
@@ -14,13 +16,16 @@ pub enum Condition {
     }
 }
 
+#[derive(Debug)]
 pub struct BinaryBuiltin {
     pub(crate) a: UniqueVariableRef,
     pub(crate) b: UniqueVariableRef,
     pub(crate) into: UniqueVariableRef,
 }
 
+#[derive(Debug)]
 pub enum Statement {
+    Assert(UniqueVariableRef, Span),
     Not {
         input: UniqueVariableRef,
         into: UniqueVariableRef,
@@ -43,7 +48,6 @@ pub struct Process {
 
 
 pub struct Program {
-    pub(crate) conditions: Vec<Condition>,
     pub(crate) tests: Vec<Process>,
 }
 

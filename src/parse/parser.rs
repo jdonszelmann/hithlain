@@ -1,7 +1,7 @@
 use crate::parse::lexer::{TokenStream, Token, TokenIterator};
 use crate::parse::span::Span;
 use thiserror::Error;
-use crate::parse::ast::{Program, Circuit, Variable, Statement, Expr, Constant, Atom, BinaryAction, Process, StatementOrTime, TimeSpec, NaryAction, Test};
+use crate::parse::ast::{Program, Circuit, Variable, Statement, Expr, Constant, Atom, BinaryAction, Process, StatementOrTime, TimeSpec, NaryAction, Test, UnaryAction, Assignment};
 use miette::{Diagnostic, SourceSpan, NamedSource};
 use crate::time::{Duration, Instant};
 
@@ -227,6 +227,7 @@ impl Parser {
                 Token::Nor => BinaryAction::Nor,
                 Token::Xor => BinaryAction::Xor,
                 Token::Xnor => BinaryAction::Xnor,
+                Token::Eq => BinaryAction::Xnor,
                 _ => break,
             };
 
@@ -285,10 +286,42 @@ impl Parser {
             }
         }
 
+        if let Some((tok, _)) = self.peek() {
+            if tok == &Token::Not {
+                self.next();
+                self.expect_single_token(&Token::LParen, None)?;
+                let param = self.parse_atom()?;
+                self.expect_single_token(&Token::RParen, None)?;
+
+
+                return Ok(Expr::NaryOp {
+                    params: vec![param],
+                    action: NaryAction::UnaryAction(
+                        UnaryAction::Not
+                    )
+                })
+            }
+        }
+
         self.parse_binary()
     }
 
     pub fn parse_statement(&mut self) -> Result<Statement, ParseError> {
+        if let Some((tok, spn)) = self.peek() {
+            let spn = spn.clone();
+            if tok == &Token::Assert {
+                self.next();
+                let expr = self.parse_expr()?;
+                self.expect_single_token(&Token::SemiColon, None)?;
+
+                return Ok(Statement::Assert {
+                    expr,
+                    span: spn.merge_with(&self.current_span())
+                })
+            }
+        }
+
+
         let mut vars = vec![self.parse_variable(Some("a variable to assign the expression outcome to".to_string()))?];
 
         loop {
@@ -310,10 +343,10 @@ impl Parser {
         self.expect_single_token(&Token::SemiColon, Some("`;` or binary operator".to_string()))?;
 
 
-        Ok(Statement {
+        Ok(Statement::Assignment(Assignment {
             into: vars,
             expr,
-        })
+        }))
     }
 
     pub fn parse_statement_or_time(&mut self) -> Result<StatementOrTime, ParseError> {

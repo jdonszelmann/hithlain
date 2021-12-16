@@ -1,7 +1,8 @@
 use crate::parse::ast::{Constant, Variable};
 use crate::time::Instant;
-use std::collections::HashMap;
+
 use crate::sim::instantiate::UniqueVariableRef;
+use crate::parse::span::Span;
 
 #[derive(Clone)]
 pub struct BinaryBuiltin {
@@ -12,6 +13,7 @@ pub struct BinaryBuiltin {
 
 #[derive(Clone)]
 pub enum Statement {
+    Assert(UniqueVariableRef, Span),
     Not {
         input: UniqueVariableRef,
         into: UniqueVariableRef,
@@ -24,13 +26,13 @@ pub enum Statement {
     Xnor(BinaryBuiltin),
     Move(UniqueVariableRef, UniqueVariableRef),
     Set(UniqueVariableRef, Constant),
+    CreateInstance(Circuit),
 }
 
+#[derive(Clone)]
 pub struct Circuit {
     pub(crate) inputs: Vec<UniqueVariableRef>,
     pub(crate) outputs: Vec<UniqueVariableRef>,
-
-    pub(crate) inner_circuits: Vec<Circuit>,
 
     pub(crate) body: Vec<Statement>,
 }
@@ -44,14 +46,11 @@ pub struct Process {
     pub(crate) name: Variable,
     pub(crate) timed_blocks: Vec<TimedBlock>,
 
-    pub(crate) inner_circuits: Vec<Circuit>,
-
     pub(crate) inputs: Vec<UniqueVariableRef>,
     pub(crate) outputs: Vec<UniqueVariableRef>,
 }
 
 pub struct Program {
-    pub(crate) circuits: Vec<Circuit>,
     pub(crate) tests: Vec<Process>,
 }
 

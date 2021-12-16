@@ -2,6 +2,7 @@ use std::rc::Rc;
 use crate::parse::scope::VariableRef;
 use crate::parse::ast::{Constant, Variable};
 use crate::time::Instant;
+use crate::parse::span::Span;
 
 #[derive(Clone)]
 pub struct BinaryBuiltin {
@@ -12,6 +13,7 @@ pub struct BinaryBuiltin {
 
 #[derive(Clone)]
 pub enum Statement {
+    Assert(VariableRef, Span),
     Not {
         input: VariableRef,
         into: VariableRef,

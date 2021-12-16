@@ -50,9 +50,16 @@ pub enum Token {
     #[token("xnor")]
     #[display(fmt = "xnor")]
     Xnor,
+    #[token("==")]
+    #[display(fmt = "==")]
+    Eq,
     #[token("not")]
     #[display(fmt = "not")]
     Not,
+
+    #[token("assert")]
+    #[display(fmt = "assert")]
+    Assert,
 
     #[token("at")]
     #[display(fmt = "absolute time specification")]

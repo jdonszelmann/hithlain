@@ -4,8 +4,8 @@ use crate::sim::linked_ast::Statement;
 use std::cmp::Ordering;
 
 pub struct Signal {
-    time: Instant,
-    action: Vec<Rc<Statement>>
+    pub(crate) time: Instant,
+    pub(crate) action: Rc<Statement>
 }
 
 impl PartialEq<Self> for Signal {

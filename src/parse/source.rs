@@ -2,13 +2,13 @@ use std::ops::Deref;
 use std::sync::Arc;
 use miette::NamedSource;
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Hash)]
 pub struct InnerSource {
     text: String,
     name: String
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Source(Arc<InnerSource>);
 
 

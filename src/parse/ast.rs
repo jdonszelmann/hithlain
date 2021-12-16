@@ -6,6 +6,7 @@ use crate::time::{Duration, Instant};
 #[derivative(PartialEq, Hash)]
 pub struct Variable (
     pub(crate) String,
+
     #[derivative(PartialEq="ignore")]
     #[derivative(Hash="ignore")]
     pub(crate) Option<Span>
@@ -63,9 +64,18 @@ pub enum Expr {
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
-pub struct Statement {
+pub struct Assignment {
     pub(crate) into: Vec<Variable>,
     pub(crate) expr: Expr,
+}
+
+#[derive(Debug, Eq, PartialEq, Hash)]
+pub enum Statement {
+    Assignment(Assignment),
+    Assert {
+        expr: Expr,
+        span: Span,
+    }
 }
 
 

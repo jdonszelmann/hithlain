@@ -32,6 +32,7 @@ pub enum VariableType {
 
 #[derive(Derivative)]
 #[derivative(Hash, PartialEq)]
+#[derive(Debug)]
 pub struct InnerVariableRef {
     pub(crate) variable: Variable,
     pub(crate) variable_type: VariableType,
@@ -45,7 +46,7 @@ pub struct InnerVariableRef {
 }
 impl Eq for InnerVariableRef {}
 
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct VariableRef (pub(crate) Rc<InnerVariableRef>);
 
 pub struct Scope {
