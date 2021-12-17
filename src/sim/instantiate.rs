@@ -7,6 +7,8 @@ use crate::parse::ast::Variable;
 use derivative::Derivative;
 use std::fmt::{Formatter, Debug};
 use crate::parse::desugared_ast::Statement;
+use crate::sim::instantiated_ast::{LocalizedVariable, Package};
+use std::ops::Deref;
 
 #[derive(Clone, Derivative)]
 #[derivative(Hash, PartialEq)]
@@ -15,12 +17,16 @@ pub struct UniqueVariableRef {
 
     #[derivative(Hash = "ignore")]
     #[derivative(PartialEq = "ignore")]
-    original: Rc<Variable>,
+    original: LocalizedVariable,
 }
 
 impl Debug for UniqueVariableRef {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} ({})", self.original.0, self.identifier)
+        for i in self.original.path.deref() {
+            write!(f, "{}.", i.name().0)?
+        }
+
+        write!(f, "{}", self.original.variable.0)
     }
 }
 
@@ -37,10 +43,10 @@ impl UniqueVariableRefGenerator {
         }
     }
 
-    pub fn new_var(&mut self, variable: Variable) -> UniqueVariableRef {
+    pub fn new_var(&mut self, variable: LocalizedVariable) -> UniqueVariableRef {
         let res = UniqueVariableRef {
             identifier: self.cur,
-            original: Rc::new(variable),
+            original: variable,
         };
         self.cur += 1;
 
@@ -48,11 +54,11 @@ impl UniqueVariableRefGenerator {
     }
 }
 
-pub fn rename(a: VariableRef, mapping: &mut HashMap<VariableRef, UniqueVariableRef>, gen: &mut UniqueVariableRefGenerator) -> UniqueVariableRef {
+pub fn rename(a: VariableRef, mapping: &mut HashMap<VariableRef, UniqueVariableRef>, gen: &mut UniqueVariableRefGenerator, package_path: &Rc<Vec<Package>>) -> UniqueVariableRef {
     if let Some(i) = mapping.get(&a) {
         i.clone()
     } else {
-        let v = gen.new_var(a.0.variable.clone());
+        let v = gen.new_var(a.0.variable.localize(package_path.clone()));
         mapping.insert(a.clone(), v.clone());
         v
     }
@@ -62,66 +68,72 @@ pub fn instantiate_program(p: d::Program) -> inst::Program {
     let mut gen = UniqueVariableRefGenerator::new();
 
     inst::Program {
-        tests: p.tests.into_iter().map(|t| instantiate_process(t, &mut gen)).collect(),
+        tests: p.tests.into_iter().map(|t| instantiate_process(t, &mut gen, vec![])).collect(),
     }
 }
 
-pub fn instantiate_process(c: d::Process, gen: &mut UniqueVariableRefGenerator) -> inst::Process {
+pub fn instantiate_process(c: Rc<d::Process>, gen: &mut UniqueVariableRefGenerator, mut package_path: Vec<Package>) -> inst::Process {
+    package_path.push(c.clone().into());
+    let local_package_path = Rc::new(package_path);
+
     let mut mapping = HashMap::new();
 
-    let inputs = c.inputs.into_iter()
-        .map(|i| rename(i, &mut mapping, gen))
+    let inputs = c.inputs.iter()
+        .map(|i| rename(i.clone(), &mut mapping, gen, &local_package_path))
         .collect();
 
-    let outputs = c.outputs.into_iter()
-        .map(|i| rename(i, &mut mapping, gen))
+    let outputs = c.outputs.iter()
+        .map(|i| rename(i.clone(), &mut mapping, gen, &local_package_path))
         .collect();
 
 
     inst::Process {
         name: c.name.clone(),
         timed_blocks: c.timed_blocks.iter()
-            .map(|i| instantiate_timed_block(i, &mut mapping, gen))
+            .map(|i| instantiate_timed_block(i, &mut mapping, gen, &local_package_path))
             .collect(),
         inputs,
         outputs,
     }
 }
 
-pub fn instantiate_timed_block(block: &d::TimedBlock, mapping: &mut HashMap<VariableRef, UniqueVariableRef>, gen: &mut UniqueVariableRefGenerator) -> inst::TimedBlock {
+pub fn instantiate_timed_block(block: &d::TimedBlock, mapping: &mut HashMap<VariableRef, UniqueVariableRef>, gen: &mut UniqueVariableRefGenerator, package_path: &Rc<Vec<Package>>) -> inst::TimedBlock {
     inst::TimedBlock {
         time: block.time,
         block: block.block.iter()
-            .map(|i| instantiate_statement(i.clone(), mapping, gen))
+            .map(|i| instantiate_statement(i.clone(), mapping, gen, &package_path))
             .flatten()
             .collect()
     }
 }
 
-pub fn instantiate_circuit(c: Rc<d::Circuit>, gen: &mut UniqueVariableRefGenerator) -> inst::Circuit {
+pub fn instantiate_circuit(c: Rc<d::Circuit>, gen: &mut UniqueVariableRefGenerator, mut package_path: Vec<Package>) -> inst::Circuit {
+    package_path.push(c.clone().into());
+    let local_package_path = Rc::new(package_path);
+
     let mut mapping = HashMap::new();
 
     let inputs = c.inputs.iter()
         .cloned()
-        .map(|i| rename(i, &mut mapping, gen))
+        .map(|i| rename(i, &mut mapping, gen, &local_package_path))
         .collect();
 
     let outputs = c.outputs.iter()
         .cloned()
-        .map(|i| rename(i, &mut mapping, gen))
+        .map(|i| rename(i, &mut mapping, gen, &local_package_path))
         .collect();
 
     inst::Circuit {
         inputs,
         outputs,
         body: c.body.iter()
-            .map(|s| instantiate_statement(s.clone(), &mut mapping, gen))
+            .map(|s| instantiate_statement(s.clone(), &mut mapping, gen, &local_package_path))
             .flatten()
             .collect(),
     }
 }
 
-pub fn instantiate_statement(stmt: d::Statement, mapping: &mut HashMap<VariableRef, UniqueVariableRef>, gen: &mut UniqueVariableRefGenerator) -> Vec<inst::Statement> {
+pub fn instantiate_statement(stmt: d::Statement, mapping: &mut HashMap<VariableRef, UniqueVariableRef>, gen: &mut UniqueVariableRefGenerator, package_path: &Rc<Vec<Package>>) -> Vec<inst::Statement> {
     macro_rules! rename_builtin {
         ($($tt:tt)*) => {
             {
@@ -132,9 +144,9 @@ pub fn instantiate_statement(stmt: d::Statement, mapping: &mut HashMap<VariableR
                 } = $($tt)*;
 
                 inst::BinaryBuiltin {
-                    a: rename(a, mapping, gen),
-                    b: rename(b, mapping, gen),
-                    into: rename(into, mapping, gen),
+                    a: rename(a, mapping, gen, package_path),
+                    b: rename(b, mapping, gen, package_path),
+                    into: rename(into, mapping, gen, package_path),
                 }
             }
         };
@@ -142,8 +154,8 @@ pub fn instantiate_statement(stmt: d::Statement, mapping: &mut HashMap<VariableR
 
     match stmt {
         d::Statement::Not { input, into } => vec![inst::Statement::Not {
-            input: rename(input, mapping, gen),
-            into: rename(into, mapping, gen),
+            input: rename(input, mapping, gen, &package_path),
+            into: rename(into, mapping, gen, &package_path),
         }],
         d::Statement::And(i) => vec![inst::Statement::And(rename_builtin!(i))],
         d::Statement::Or(i) => vec![inst::Statement::Or(rename_builtin!(i))],
@@ -152,16 +164,16 @@ pub fn instantiate_statement(stmt: d::Statement, mapping: &mut HashMap<VariableR
         d::Statement::Xor(i) => vec![inst::Statement::Xor(rename_builtin!(i))],
         d::Statement::Xnor(i) => vec![inst::Statement::Xnor(rename_builtin!(i))],
         d::Statement::Custom { inputs, circuit, into } => {
-            let instantiated_circuit = instantiate_circuit(circuit, gen);
+            let instantiated_circuit = instantiate_circuit(circuit, gen, package_path.deref().clone());
 
             let mut res = Vec::new();
 
             for (a, b) in inputs.iter().zip(&instantiated_circuit.inputs) {
-                res.push(inst::Statement::Move(b.clone(), rename(a.clone(), mapping, gen)));
+                res.push(inst::Statement::Move(b.clone(), rename(a.clone(), mapping, gen, package_path)));
             }
 
             for (a, b) in into.iter().zip(&instantiated_circuit.outputs) {
-                res.push(inst::Statement::Move(rename(a.clone(), mapping, gen), b.clone()));
+                res.push(inst::Statement::Move(rename(a.clone(), mapping, gen, package_path), b.clone()));
             }
 
             res.push(inst::Statement::CreateInstance(instantiated_circuit));
@@ -169,13 +181,13 @@ pub fn instantiate_statement(stmt: d::Statement, mapping: &mut HashMap<VariableR
             res
         }
         d::Statement::Move(a, b) => {
-            vec![inst::Statement::Move(rename(a.clone(), mapping, gen), rename(b.clone(), mapping, gen))]
+            vec![inst::Statement::Move(rename(a.clone(), mapping, gen, package_path), rename(b.clone(), mapping, gen, package_path))]
         }
         d::Statement::Set(a, b) => {
-            vec![inst::Statement::Set(rename(a.clone(), mapping, gen), b)]
+            vec![inst::Statement::Set(rename(a.clone(), mapping, gen, package_path), b)]
         }
         Statement::Assert(a, span) => {
-            vec![inst::Statement::Assert(rename(a.clone(), mapping, gen), span)]
+            vec![inst::Statement::Assert(rename(a.clone(), mapping, gen, package_path), span)]
         }
     }
 }

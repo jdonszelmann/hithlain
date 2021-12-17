@@ -137,7 +137,7 @@ pub fn desugar_program(p: a::Program) -> Result<d::Program, DesugarError> {
 
     let mut tests = Vec::new();
     for i in &p.tests {
-        tests.push(desugar_test(i, &mut circuits)?);
+        tests.push(Rc::new(desugar_test(i, &mut circuits)?));
     }
 
     Ok(Program {
@@ -214,6 +214,7 @@ fn desugar_circuit(circuit: &a::Circuit, circuit_names: &mut HashMap<&a::Variabl
     }
 
     Ok(Ok(Rc::new(d::Circuit {
+        name: circuit.name.clone(),
         inputs,
         outputs,
         body

@@ -81,25 +81,25 @@ pub fn link_process(p: inst::Process) -> l::Process {
 pub fn link_timed_block(p: inst::TimedBlock) -> Vec<Condition> {
     let rest = link_statement_list(p.block.clone(), false).into_iter();
 
-    let mut time = p.time;
-    macro_rules! get_time {
-        () => {
-            {
-                let orig = time;
-                time = time.add_process_step();
-                orig
-            }
-        };
-    }
+    // let mut time = p.time;
+    // macro_rules! get_time {
+    //     () => {
+    //         {
+    //             let orig = time;
+    //             time = time.add_process_step();
+    //             orig
+    //         }
+    //     };
+    // }
 
     p.block.into_iter()
         .filter_map(|i| match i {
             Statement::Set(a, b) => Some(Condition::AtTime {
-                time: get_time!(),
+                time: p.time,
                 run: Rc::new(l::Statement::Set(a, b.clone()))
             }),
             Statement::Assert(e, span) => Some(Condition::AtTime {
-                time: get_time!(),
+                time: p.time.add_process_step(),
                 run: Rc::new(l::Statement::Assert(e, span))
             }),
             _ => None,

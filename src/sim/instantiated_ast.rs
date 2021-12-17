@@ -1,8 +1,32 @@
 use crate::parse::ast::{Constant, Variable};
 use crate::time::Instant;
+use crate::parse::desugared_ast as d;
 
 use crate::sim::instantiate::UniqueVariableRef;
 use crate::parse::span::Span;
+use std::rc::Rc;
+use derive_more::From;
+
+#[derive(From, Clone)]
+pub enum Package {
+    Circuit(Rc<d::Circuit>),
+    Test(Rc<d::Process>),
+}
+
+impl Package {
+    pub fn name(&self) -> &Variable {
+        match self {
+            Package::Circuit(c) => &c.name,
+            Package::Test(p) => &p.name,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct LocalizedVariable {
+    pub(crate) variable: Variable,
+    pub(crate) path: Rc<Vec<Package>>,
+}
 
 #[derive(Clone)]
 pub struct BinaryBuiltin {

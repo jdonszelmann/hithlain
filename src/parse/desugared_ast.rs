@@ -34,6 +34,8 @@ pub enum Statement {
 }
 
 pub struct Circuit {
+    pub(crate) name: Variable,
+
     pub(crate) inputs: Vec<VariableRef>,
     pub(crate) outputs: Vec<VariableRef>,
 
@@ -55,6 +57,6 @@ pub struct Process {
 
 pub struct Program {
     pub(crate) circuits: Vec<Rc<Circuit>>,
-    pub(crate) tests: Vec<Process>,
+    pub(crate) tests: Vec<Rc<Process>>,
 }
 

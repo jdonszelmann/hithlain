@@ -1,6 +1,8 @@
 use crate::parse::span::Span;
 use derivative::Derivative;
 use crate::time::{Duration, Instant};
+use crate::sim::instantiated_ast::{Package, LocalizedVariable};
+use std::rc::Rc;
 
 #[derive(Debug, Derivative, Clone)]
 #[derivative(PartialEq, Hash)]
@@ -12,11 +14,20 @@ pub struct Variable (
     pub(crate) Option<Span>
 );
 
+impl Variable {
+    pub fn localize(&self, path: Rc<Vec<Package>>) -> LocalizedVariable {
+        LocalizedVariable {
+            variable: self.clone(),
+            path,
+        }
+    }
+}
+
 impl Eq for Variable {}
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub enum Constant {
-    Number(u64),
+    Bit(bool),
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]

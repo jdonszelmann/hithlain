@@ -118,9 +118,9 @@ pub enum Token {
     #[regex("[a-zA-Z][a-zA-Z0-9-_]*", |lex| lex.slice().to_string())]
     Name(String),
 
-    #[display(fmt = "number")]
-    #[regex("[0-9]+", |lex| lex.slice().parse())]
-    Number(u64),
+    #[display(fmt = "bit")]
+    #[regex("[01]", |lex| if lex.slice() == "0" {false} else {true})]
+    Bit(bool),
 
     #[regex("[0-9]+ns", nano)]
     #[regex("[0-9]+us", micro)]

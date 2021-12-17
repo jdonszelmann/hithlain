@@ -175,10 +175,10 @@ impl Parser {
     pub fn parse_constant(&mut self, description: Option<String>) -> Result<Constant, ParseError> {
         let (tok, spn) = or_unexpected_end(self.peek().cloned(), "circuit name", || self.previous_span())?;
 
-        if let Token::Number(value) = tok {
+        if let Token::Bit(value) = tok {
             let value = value.clone();
             self.next();
-            Ok(Constant::Number(value))
+            Ok(Constant::Bit(value))
         } else {
             return Err(UnexpectedToken {
                 expected: description.unwrap_or("variable".to_string()),
@@ -198,6 +198,7 @@ impl Parser {
             } else {
                 if let Some(i) = self.peek() {
                     if let (Token::LParen, _) = i {
+                        self.next(); // opening paren
                         let expr = self.parse_expr()?;
                         let res = Atom::Expr(Box::new(expr));
 
