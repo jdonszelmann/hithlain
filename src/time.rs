@@ -1,3 +1,4 @@
+use vcd::TimescaleUnit;
 
 #[derive(Debug, Eq, PartialEq, Hash, Copy, Clone)]
 pub struct Duration {
@@ -5,6 +6,10 @@ pub struct Duration {
 }
 
 impl Duration {
+    pub fn nanos(&self) -> u64 {
+        self.nanos
+    }
+
     pub fn from_nanos(nanos: u64) -> Self {
         Self {
             nanos,
@@ -18,6 +23,7 @@ pub struct Instant {
     process_steps: u64,
     deltas: u64,
 }
+
 
 impl Instant {
     pub const START: Instant = Instant::nanos_from_start(0);
@@ -52,5 +58,20 @@ impl Instant {
             process_steps: self.process_steps + 1,
             deltas: 0
         }
+    }
+
+    pub fn nanos(&self) -> u64 {
+        self.nanos
+    }
+
+    pub fn vcd_scale(&self) -> TimescaleUnit {
+        // always ns as that's the base we measure time in (integer)
+        TimescaleUnit::NS
+        // match self.nanos {
+        //     0..=999 => TimescaleUnit::NS,
+        //     1_000..=999_999 => TimescaleUnit::US,
+        //     1_000_000..=999_999_999 => TimescaleUnit::MS,
+        //     _ => TimescaleUnit::S
+        // }
     }
 }

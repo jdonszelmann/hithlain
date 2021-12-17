@@ -50,11 +50,13 @@ pub enum Statement {
     Xnor(BinaryBuiltin),
     Move(UniqueVariableRef, UniqueVariableRef),
     Set(UniqueVariableRef, Constant),
-    CreateInstance(Circuit),
+    CreateCircuitInstance(Circuit),
 }
 
 #[derive(Clone)]
 pub struct Circuit {
+    pub(crate) name: Variable,
+
     pub(crate) inputs: Vec<UniqueVariableRef>,
     pub(crate) outputs: Vec<UniqueVariableRef>,
 

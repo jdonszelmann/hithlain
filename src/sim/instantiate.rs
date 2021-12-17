@@ -2,7 +2,7 @@ use crate::parse::desugared_ast as d;
 use crate::sim::instantiated_ast as inst;
 use std::collections::HashMap;
 use std::rc::Rc;
-use crate::parse::scope::VariableRef;
+use crate::parse::scope::{VariableRef, VariableType};
 
 use derivative::Derivative;
 use std::fmt::{Formatter, Debug};
@@ -13,11 +13,29 @@ use std::ops::Deref;
 #[derive(Clone, Derivative)]
 #[derivative(Hash, PartialEq)]
 pub struct UniqueVariableRef {
-    identifier: usize,
+    pub(crate) identifier: usize,
 
     #[derivative(Hash = "ignore")]
     #[derivative(PartialEq = "ignore")]
-    original: LocalizedVariable,
+    pub(crate) generated: bool,
+
+    #[derivative(Hash = "ignore")]
+    #[derivative(PartialEq = "ignore")]
+    pub(crate) original: LocalizedVariable,
+}
+
+impl UniqueVariableRef {
+    pub fn name(&self) -> String {
+        let mut res = String::new();
+        for i in self.original.path.deref() {
+            res.push_str(&i.name().0);
+            res.push_str(".");
+        }
+
+        res.push_str(&self.original.variable.0);
+
+        res
+    }
 }
 
 impl Debug for UniqueVariableRef {
@@ -46,6 +64,7 @@ impl UniqueVariableRefGenerator {
     pub fn new_var(&mut self, variable: LocalizedVariable) -> UniqueVariableRef {
         let res = UniqueVariableRef {
             identifier: self.cur,
+            generated: false,
             original: variable,
         };
         self.cur += 1;
@@ -58,18 +77,20 @@ pub fn rename(a: VariableRef, mapping: &mut HashMap<VariableRef, UniqueVariableR
     if let Some(i) = mapping.get(&a) {
         i.clone()
     } else {
-        let v = gen.new_var(a.0.variable.localize(package_path.clone()));
+        let mut v = gen.new_var(a.0.variable.localize(package_path.clone()));
+        if a.0.variable_type == VariableType::Temp {
+            v.generated = true;
+        }
+
         mapping.insert(a.clone(), v.clone());
         v
     }
 }
 
-pub fn instantiate_program(p: d::Program) -> inst::Program {
+pub fn instantiate_program(p: Rc<d::Process>) -> inst::Process {
     let mut gen = UniqueVariableRefGenerator::new();
 
-    inst::Program {
-        tests: p.tests.into_iter().map(|t| instantiate_process(t, &mut gen, vec![])).collect(),
-    }
+    instantiate_process(p, &mut gen, vec![])
 }
 
 pub fn instantiate_process(c: Rc<d::Process>, gen: &mut UniqueVariableRefGenerator, mut package_path: Vec<Package>) -> inst::Process {
@@ -124,6 +145,7 @@ pub fn instantiate_circuit(c: Rc<d::Circuit>, gen: &mut UniqueVariableRefGenerat
         .collect();
 
     inst::Circuit {
+        name: c.name.clone(),
         inputs,
         outputs,
         body: c.body.iter()
@@ -176,7 +198,7 @@ pub fn instantiate_statement(stmt: d::Statement, mapping: &mut HashMap<VariableR
                 res.push(inst::Statement::Move(rename(a.clone(), mapping, gen, package_path), b.clone()));
             }
 
-            res.push(inst::Statement::CreateInstance(instantiated_circuit));
+            res.push(inst::Statement::CreateCircuitInstance(instantiated_circuit));
 
             res
         }

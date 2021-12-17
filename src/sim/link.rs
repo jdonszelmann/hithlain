@@ -5,13 +5,6 @@ use std::rc::Rc;
 use crate::time::Instant;
 use crate::sim::instantiated_ast::Statement;
 
-pub fn link_program(p: inst::Program) -> l::Program {
-
-    l::Program {
-        tests: p.tests.into_iter().map(|i| link_process(i)).collect()
-    }
-}
-
 
 pub fn link_statement_list(statements: Vec<Statement>, do_sets: bool) -> Vec<Condition> {
     macro_rules! binary_stmt {
@@ -53,7 +46,7 @@ pub fn link_statement_list(statements: Vec<Statement>, do_sets: bool) -> Vec<Con
             } else {
                 vec![]
             },
-            Statement::CreateInstance(circuit) => {
+            Statement::CreateCircuitInstance(circuit) => {
                 link_circuit(circuit)
             }
             Statement::Assert(_, _) => vec![], // ignore asserts in normal statements (shouldn't be parsed anyway)

@@ -1,20 +1,22 @@
-use std::cmp::Reverse;
-use std::collections::{BinaryHeap, HashMap};
-use std::rc::Rc;
 
-use miette::{Diagnostic, NamedSource, SourceSpan};
+
+
+
+use miette::{Diagnostic};
 use thiserror::Error;
 
 use simulation::{AssertionError, Simulation, SimulationState};
-use value::Value;
 
-use crate::parse::desugared_ast;
-use crate::sim::instantiate::{instantiate_program, UniqueVariableRef};
-use crate::sim::link::link_program;
-use crate::sim::linked_ast::{BinaryBuiltin, Condition, Process, Program, Statement};
-use crate::sim::signal::Signal;
+use crate::parse::desugared_ast::{Program, Process};
+
 use crate::sim::value::ValueError;
-use crate::time::Instant;
+use crate::sim::config::SimulationConfig;
+use crate::vcd::{VcdError, VcdGenerator};
+use std::rc::Rc;
+use crate::sim::instantiate::instantiate_program;
+use crate::vcd::vcd_ast::process_to_vcd_ast;
+use crate::sim::link::link_process;
+
 
 pub mod link;
 pub mod linked_ast;
@@ -23,6 +25,7 @@ pub mod instantiated_ast;
 pub mod value;
 pub mod signal;
 pub mod simulation;
+pub mod config;
 
 #[derive(Debug, Error, Diagnostic)]
 pub enum SimulationError {
@@ -33,45 +36,62 @@ pub enum SimulationError {
     #[error(transparent)]
     #[diagnostic(transparent)]
     ValueError(#[from] ValueError),
+
+    #[error(transparent)]
+    #[diagnostic(transparent)]
+    VcdError(#[from] VcdError)
 }
 
 pub struct Simulator {
     program: Program,
+
+    config: SimulationConfig,
 }
 
 impl Simulator {
-    pub fn new(program: desugared_ast::Program) -> Self {
-        let program = link_program(instantiate_program(program));
+    pub fn new(program: Program, config: SimulationConfig) -> Result<Self, SimulationError> {
 
-        Self {
+        Ok(Self {
             program,
-        }
+            config
+        })
     }
 
     pub fn run_test(&self, name: impl AsRef<str>) -> Result<(), SimulationError> {
         for i in &self.program.tests {
             if i.name.0 == name.as_ref() {
-                self._run_test(i)?;
+                self._run_test(i.clone())?;
             }
         }
         Ok(())
     }
 
-    fn _run_test(&self, test: &Process) -> Result<(), SimulationError> {
+    fn _run_test(&self, test: Rc<Process>) -> Result<(), SimulationError> {
         self.execute_process(test)
     }
 
     pub fn run_all_tests(&self) -> Result<(), SimulationError> {
         for i in &self.program.tests {
-            self._run_test(i)?;
+            self._run_test(i.clone())?;
         }
 
         Ok(())
     }
 
-    fn execute_process(&self, test: &Process) -> Result<(), SimulationError> {
-        let mut simulation = Simulation::new(test);
+    fn execute_process(&self, test: Rc<Process>) -> Result<(), SimulationError> {
+        let instantiated = instantiate_program(test);
+
+        let vcd_ast = if self.config.create_vcd {
+            Some(process_to_vcd_ast(&instantiated))
+        } else {
+            None
+        };
+
+        let linked = link_process(instantiated);
+
+        let mut simulation = Simulation::new(linked, &self.config, vcd_ast)?;
         while let SimulationState::Continue = simulation.step()? {}
+
         Ok(())
     }
 }
@@ -85,6 +105,7 @@ mod tests {
     use crate::parse::parser::Parser;
     use crate::parse::source::Source;
     use crate::sim::Simulator;
+    use crate::sim::config::{SimulationConfig, VcdPath};
 
     #[test]
     fn test_smoke() {
@@ -118,7 +139,7 @@ mod tests {
 
         let desugared = desugar_program(parsed).nice_unwrap();
 
-        let s = Simulator::new(desugared);
+        let s = Simulator::new(desugared, SimulationConfig::default()).nice_unwrap();
         s.run_all_tests().nice_unwrap();
     }
 
@@ -163,7 +184,9 @@ mod tests {
 
         let desugared = desugar_program(parsed).nice_unwrap();
 
-        let s = Simulator::new(desugared);
+        let mut config = SimulationConfig::default();
+        config.vcd_path = VcdPath::Path("test.vcd".into());
+        let s = Simulator::new(desugared, config).nice_unwrap();
         s.run_all_tests().nice_unwrap();
     }
 }
