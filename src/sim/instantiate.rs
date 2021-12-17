@@ -3,7 +3,7 @@ use crate::sim::instantiated_ast as inst;
 use std::collections::HashMap;
 use std::rc::Rc;
 use crate::parse::scope::VariableRef;
-use crate::parse::ast::Variable;
+
 use derivative::Derivative;
 use std::fmt::{Formatter, Debug};
 use crate::parse::desugared_ast::Statement;

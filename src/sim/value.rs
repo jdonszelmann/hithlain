@@ -1,5 +1,5 @@
 use derive_more::From;
-use crate::sim::SimulationError;
+
 use crate::sim::value::Value::Bit;
 use std::ops::{BitXor, BitAnd, BitOr, Not};
 use miette::{NamedSource, SourceSpan, Diagnostic};

@@ -64,8 +64,6 @@ pub struct UnexpectedEnd {
 
 pub struct Parser {
     tokens: TokenIterator,
-    index: usize,
-
     previous_span: Option<Span>,
     current_span: Option<Span>,
     current_token: Option<Token>,
@@ -90,7 +88,6 @@ impl Parser {
     pub fn new(tokens: TokenStream) -> Self {
         Self {
             tokens: tokens.into_iter(),
-            index: 0,
             previous_span: None,
             current_span: None,
             current_token: None
