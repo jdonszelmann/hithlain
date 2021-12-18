@@ -6,6 +6,9 @@ pub mod vcd;
 
 pub use miette;
 
+#[cfg(test)]
+pub mod fuzz;
+
 // TODO: vhdl translation
 // mod vhdl;
 // TODO: verilog translation

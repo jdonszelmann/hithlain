@@ -98,7 +98,13 @@ impl Parser {
         self.previous_span = self.current_span.take();
 
         let n = self.tokens.next();
+
         if let Some((ref tok, ref spn)) = n {
+            if self.previous_span.is_none() {
+                self.previous_span = Some(spn.clone());
+            }
+
+
             self.current_span = Some(spn.clone());
             self.current_token = Some(tok.clone());
         }
@@ -509,6 +515,7 @@ impl Parser {
         let mut tests = Vec::new();
         let mut processes = Vec::new();
         while let Some((tok, spn)) = self.peek() {
+            println!("{:?}", tok);
             match tok {
                 Token::Circuit => {
                     circuits.push(self.parse_circuit()?)

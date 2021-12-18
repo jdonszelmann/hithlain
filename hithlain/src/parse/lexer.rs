@@ -119,8 +119,12 @@ pub enum Token {
     Name(String),
 
     #[display(fmt = "bit")]
-    #[regex("[01]", |lex| if lex.slice() == "0" {false} else {true})]
+    #[regex("[01]", |lex| if lex.slice() == "0" {false} else {true}, priority=2)]
     Bit(bool),
+
+    #[display(fmt = "number")]
+    #[regex("[0-9]+", |lex| lex.slice().parse())]
+    Number(u64),
 
     #[regex("[0-9]+ns", nano)]
     #[regex("[0-9]+us", micro)]
@@ -206,7 +210,7 @@ pub fn lex(source: Source) -> Result<TokenStream, LexError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parse::lexer::lex;
+    use crate::parse::lexer::{lex, Token};
     use crate::error::NiceUnwrap;
     use crate::parse::source::Source;
 
@@ -221,5 +225,27 @@ mod tests {
 
         lex(Source::test(src)).nice_unwrap_panic();
     }
+
+    #[test]
+    fn test_bit_number() {
+        let src = "3";
+
+        let tokens = lex(Source::test(src)).nice_unwrap();
+
+        assert!(matches!(
+            tokens.tokens.first(),
+            Some(&(Token::Number(3), _))
+        ));
+
+        let src = "1";
+
+        let tokens = lex(Source::test(src)).nice_unwrap();
+
+        assert!(matches!(
+            tokens.tokens.first(),
+            Some(&(Token::Bit(true), _))
+        ));
+    }
 }
+
 

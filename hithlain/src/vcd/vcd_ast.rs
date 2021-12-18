@@ -29,7 +29,15 @@ pub fn process_to_vcd_ast(process: &Process) -> VcdModule {
         name: process.name.clone(),
         variables: variables.into_iter()
             .filter(|i| !i.generated)
-            .filter(|i| i.original.path.len() == 1)
+            .filter(|i| if let Some(i) = i.original.path.last() {
+                if i.name() == &process.name {
+                    true
+                } else {
+                    false
+                }
+            } else {
+                false
+            })
             .collect(),
         submodules,
     }

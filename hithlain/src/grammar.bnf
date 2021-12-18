@@ -1,0 +1,7 @@
+
+<program> ::= <test> <program> | <circuit> <program> | <empty>
+
+<empty> ::= ""
+
+<test> ::= "test"
+<circuit> ::= "circuit"
