@@ -1,15 +1,4 @@
-[package]
-name = "hithlain"
-version = "0.1.0"
-edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-miette = {version = "3.2.0", features = ["fancy"]}
-thiserror = "1.0.30"
-logos = "0.12.0"
-derive_more = "0.99.17"
-derivative = "2.2.0"
-peekmore = "1.0.0"
-vcd = "0.6.1"
+[workspace]
+members = ["hithlain", "hithlain-bin"]
+default-members = ["hithlain", "hithlain-bin"]
