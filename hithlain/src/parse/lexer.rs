@@ -219,7 +219,7 @@ mod tests {
         }
         ";
 
-        lex(Source::test(src)).nice_unwrap();
+        lex(Source::test(src)).nice_unwrap_panic();
     }
 }
 

@@ -549,11 +549,11 @@ mod tests {
         }
         ";
 
-        let lexed = lex(Source::test(src)).nice_unwrap();
+        let lexed = lex(Source::test(src)).nice_unwrap_panic();
         let mut parser = Parser::new(lexed);
 
-        let parsed = parser.parse_program().nice_unwrap();
+        let parsed = parser.parse_program().nice_unwrap_panic();
 
-        desugar_program(parsed).nice_unwrap();
+        desugar_program(parsed).nice_unwrap_panic();
     }
 }

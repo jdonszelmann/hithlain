@@ -1,4 +1,6 @@
 use vcd::TimescaleUnit;
+use thiserror::Error;
+use miette::Diagnostic;
 
 #[derive(Debug, Eq, PartialEq, Hash, Copy, Clone)]
 pub struct Duration {
@@ -16,6 +18,32 @@ impl Duration {
         }
     }
 }
+
+#[derive(Debug, Error, Diagnostic)]
+pub enum TimespecError {
+    #[error("timespec doesn't have a valid suffix: {0}. must be 's', 'ms', 'us' or 'ns'")]
+    InvalidSuffix(String),
+    #[error("timespec must start with a number and end in a valid suffix: {0}.")]
+    NotANumber(String),
+}
+
+pub fn parse_timespec(spec: &str) -> Result<Duration, TimespecError> {
+    if let Some(i) = spec.strip_suffix("ns") {
+        return Ok(Duration::from_nanos(i.parse::<u64>().map_err(|_| TimespecError::NotANumber(spec.to_string()))?))
+    }
+    if let Some(i) = spec.strip_suffix("us") {
+        return Ok(Duration::from_nanos(i.parse::<u64>().map_err(|_| TimespecError::NotANumber(spec.to_string()))? * 1_000))
+    }
+    if let Some(i) = spec.strip_suffix("ms") {
+        return Ok(Duration::from_nanos(i.parse::<u64>().map_err(|_| TimespecError::NotANumber(spec.to_string()))? * 1_000_000))
+    }
+    if let Some(i) = spec.strip_suffix("s") {
+        return Ok(Duration::from_nanos(i.parse::<u64>().map_err(|_| TimespecError::NotANumber(spec.to_string()))? * 1_000_000_000))
+    }
+
+    Err(TimespecError::InvalidSuffix(spec.to_string()))
+}
+
 
 #[derive(Debug, Eq, PartialEq, Hash, Copy, Clone, Ord, PartialOrd)]
 pub struct Instant {

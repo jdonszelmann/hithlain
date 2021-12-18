@@ -11,7 +11,7 @@ use crate::parse::desugared_ast::{Program, Process};
 
 use crate::sim::value::ValueError;
 use crate::sim::config::SimulationConfig;
-use crate::vcd::{VcdError, VcdGenerator};
+use crate::vcd::{VcdError};
 use std::rc::Rc;
 use crate::sim::instantiate::instantiate_program;
 use crate::vcd::vcd_ast::process_to_vcd_ast;
@@ -132,15 +132,15 @@ mod tests {
         }
         ";
 
-        let lexed = lex(Source::test(src)).nice_unwrap();
+        let lexed = lex(Source::test(src)).nice_unwrap_panic();
         let mut parser = Parser::new(lexed);
 
-        let parsed = parser.parse_program().nice_unwrap();
+        let parsed = parser.parse_program().nice_unwrap_panic();
 
-        let desugared = desugar_program(parsed).nice_unwrap();
+        let desugared = desugar_program(parsed).nice_unwrap_panic();
 
-        let s = Simulator::new(desugared, SimulationConfig::default()).nice_unwrap();
-        s.run_all_tests().nice_unwrap();
+        let s = Simulator::new(desugared, SimulationConfig::default()).nice_unwrap_panic();
+        s.run_all_tests().nice_unwrap_panic();
     }
 
     #[test]
@@ -177,16 +177,16 @@ mod tests {
         }
         ";
 
-        let lexed = lex(Source::test(src)).nice_unwrap();
+        let lexed = lex(Source::test(src)).nice_unwrap_panic();
         let mut parser = Parser::new(lexed);
 
-        let parsed = parser.parse_program().nice_unwrap();
+        let parsed = parser.parse_program().nice_unwrap_panic();
 
-        let desugared = desugar_program(parsed).nice_unwrap();
+        let desugared = desugar_program(parsed).nice_unwrap_panic();
 
         let mut config = SimulationConfig::default();
-        config.vcd_path = VcdPath::Path("test.vcd".into());
-        let s = Simulator::new(desugared, config).nice_unwrap();
-        s.run_all_tests().nice_unwrap();
+        // config.vcd_path = VcdPath::Path("test.vcd".into());
+        let s = Simulator::new(desugared, config).nice_unwrap_panic();
+        s.run_all_tests().nice_unwrap_panic();
     }
 }

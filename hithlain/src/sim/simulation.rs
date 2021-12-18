@@ -50,14 +50,14 @@ impl<'config> Simulation<'config> {
         for i in process.conditions.into_iter() {
             match i {
                 Condition::AtTime { time, run } => {
-                    println!("{:?} --> {:?}", time, run);
+                    // println!("{:?} --> {:?}", time, run);
                     pq.push(Reverse(Signal {
                         time: time.clone(),
                         action: run.clone()
                     }))
                 }
                 Condition::WhenChanges { variable, run } => {
-                    println!("{:?} --> {:?}", variable, run);
+                    // println!("{:?} --> {:?}", variable, run);
                     map.entry(variable)
                         .and_modify(|i: &mut Vec<Rc<Statement>>| i.push(run.clone()))
                         .or_insert(vec![run.clone()]);
@@ -110,7 +110,7 @@ impl<'config> Simulation<'config> {
                         let $variable = if let Some(i) = self.get_var($variable) {
                             i
                         } else {
-                            println!("didn't exist: {:?}", $variable);
+                            // println!("didn't exist: {:?}", $variable);
                             return Ok(modified_variables)
                         };
                     )*
@@ -128,7 +128,7 @@ impl<'config> Simulation<'config> {
                     let $variable = if let Some(i) = self.get_var($variable) {
                         i
                     } else {
-                        println!("didn't exist: {:?}", $variable);
+                        // println!("didn't exist: {:?}", $variable);
                         return Ok(modified_variables)
                     };
                 )*
@@ -216,7 +216,7 @@ impl<'config> Simulation<'config> {
 
     pub fn step(&mut self) -> Result<SimulationState, SimulationError> {
         if let Some(Reverse(Signal{ time, action })) = self.pq.pop() {
-            println!("{:?}", action);
+            // println!("{:?}", action);
             let modified_variables = self.handle_signal(&action)?;
             self.update_queue(modified_variables, time)?;
 

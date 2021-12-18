@@ -1,6 +1,32 @@
 use std::ops::Deref;
 use std::sync::Arc;
-use miette::NamedSource;
+use miette::{NamedSource, Diagnostic};
+use thiserror::Error;
+use std::fs::File;
+use std::io::Read;
+
+#[derive(Debug, Error, Diagnostic)]
+pub enum SourceError {
+    #[diagnostic(transparent)]
+    #[error(transparent)]
+    SourceDoesntExistError(#[from] SourceDoesntExistError),
+
+    #[diagnostic(transparent)]
+    #[error(transparent)]
+    SourceReadError(#[from] SourceReadError)
+}
+
+#[derive(Debug, Error, Diagnostic)]
+#[error("file name doesnt exist: {}", name)]
+pub struct SourceDoesntExistError {
+    name: String
+}
+
+#[derive(Debug, Error, Diagnostic)]
+#[error("failed to read from: {}", name)]
+pub struct SourceReadError {
+    name: String
+}
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub struct InnerSource {
@@ -8,9 +34,10 @@ pub struct InnerSource {
     name: String
 }
 
+
+
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Source(Arc<InnerSource>);
-
 
 
 impl Into<NamedSource> for Source {
@@ -25,6 +52,16 @@ impl Source {
             text: text.as_ref().to_string(),
             name: name.as_ref().to_string()
         }))
+    }
+
+    pub fn file(name: &str) -> Result<Source, SourceError> {
+        let mut f = File::open(name)
+            .map_err(|_| SourceDoesntExistError { name: name.to_string() })?;
+
+        let mut buf = String::new();
+        f.read_to_string(&mut buf).map_err(|_| SourceReadError { name: name.to_string() })?;
+
+        Ok(Self::new(buf, name))
     }
 
     #[cfg(test)]

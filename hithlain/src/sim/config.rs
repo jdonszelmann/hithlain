@@ -39,6 +39,7 @@ pub struct SimulationConfig {
     pub create_vcd: bool,
     pub vcd_path: VcdPath,
     pub vcd_overshoot_duration: Duration,
+    pub simulation_time: Option<Duration>,
 }
 
 impl Default for SimulationConfig {
@@ -47,6 +48,7 @@ impl Default for SimulationConfig {
             create_vcd: true,
             vcd_path: VcdPath::InMemory,
             vcd_overshoot_duration: Duration::from_nanos(10),
+            simulation_time: None
         }
     }
 }
