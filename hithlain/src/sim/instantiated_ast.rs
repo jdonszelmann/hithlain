@@ -14,6 +14,7 @@ pub enum Package {
 }
 
 impl Package {
+    #[must_use]
     pub fn name(&self) -> &Variable {
         match self {
             Package::Circuit(c) => &c.name,
@@ -77,6 +78,7 @@ pub struct Process {
 }
 
 pub struct Program {
+
     pub(crate) tests: Vec<Process>,
 }
 

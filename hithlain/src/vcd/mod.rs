@@ -94,7 +94,7 @@ impl VcdGenerator {
         Ok(())
     }
 
-    pub fn update_wire(&mut self, variable: &UniqueVariableRef, value: Value, time: Instant) -> Result<(), VcdError> {
+    pub fn update_wire(&mut self, variable: &UniqueVariableRef, value: &Value, time: Instant) -> Result<(), VcdError> {
         match value {
             Value::Bit(b) => {
                 // println!("{:?}: set {:?} to {:?}", time, variable, value);
@@ -106,7 +106,7 @@ impl VcdGenerator {
                 };
 
                 self.writer.timestamp(time.nanos()).map_err(FileWriteError)?;
-                self.writer.change_scalar(*wire, if b {
+                self.writer.change_scalar(*wire, if *b {
                     vcd::Value::V1
                 } else {
                     vcd::Value::V0

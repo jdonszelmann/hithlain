@@ -39,7 +39,7 @@ pub struct InnerSource {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Source(Arc<InnerSource>);
 
-
+#[allow(clippy::from_over_into)]
 impl Into<NamedSource> for Source {
     fn into(self) -> NamedSource {
         NamedSource::new(&self.0.name, self.0.text.clone())
@@ -69,12 +69,14 @@ impl Source {
         Self::new(text, "test")
     }
 
+    #[must_use]
     pub fn name(&self) -> &str {
         &self.0.name
     }
 
+    #[must_use]
     pub fn text(&self) -> &str {
-        self.deref()
+        &*self
     }
 }
 

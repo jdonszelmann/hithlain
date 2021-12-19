@@ -41,6 +41,7 @@ pub enum Statement {
 }
 
 pub struct Process {
+
     pub(crate) name: Variable,
 
     pub(crate) conditions: Vec<Condition>,
@@ -48,6 +49,7 @@ pub struct Process {
 
 
 pub struct Program {
+
     pub(crate) tests: Vec<Process>,
 }
 

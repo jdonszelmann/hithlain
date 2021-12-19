@@ -26,7 +26,7 @@ fn milli(lex: &mut Lexer<Token>) -> Option<u64> {
 
 fn second(lex: &mut Lexer<Token>) -> Option<u64> {
     let slice = lex.slice();
-    let n: u64 = slice[..slice.len() - 2].parse().ok()?; // skip 'ms'
+    let n: u64 = slice[..slice.len() - 1].parse().ok()?; // skip 'ms'
     Some(n * 1_000_000_000)
 }
 
@@ -115,21 +115,21 @@ pub enum Token {
     Assignment,
 
     #[display(fmt = "variable name ({})", _0)]
-    #[regex("[a-zA-Z][a-zA-Z0-9-_]*", |lex| lex.slice().to_string())]
+    #[regex("[a-zA-Z_][a-zA-Z0-9_]*", |lex| lex.slice().to_string())]
     Name(String),
 
     #[display(fmt = "bit")]
-    #[regex("[01]", |lex| if lex.slice() == "0" {false} else {true}, priority=2)]
+    #[regex("[01]", |lex| lex.slice() != "0", priority=2)]
     Bit(bool),
 
     #[display(fmt = "number")]
     #[regex("[0-9]+", |lex| lex.slice().parse())]
     Number(u64),
 
-    #[regex("[0-9]+ns", nano)]
-    #[regex("[0-9]+us", micro)]
-    #[regex("[0-9]+ms", milli)]
-    #[regex("[0-9]+s", second)]
+    #[regex("[0-9]+ns", nano,  priority=3)]
+    #[regex("[0-9]+us", micro, priority=3)]
+    #[regex("[0-9]+ms", milli, priority=3)]
+    #[regex("[0-9]+s", second, priority=3)]
     Time(u64),
 
     #[error]
@@ -187,7 +187,7 @@ impl IntoIterator for TokenStream {
     }
 }
 
-pub fn lex(source: Source) -> Result<TokenStream, LexError> {
+pub fn lex(source: &Source) -> Result<TokenStream, LexError> {
     let mut lexed: logos::Lexer<Token> = Token::lexer(source.text());
 
     let mut res = Vec::new();
@@ -200,7 +200,7 @@ pub fn lex(source: Source) -> Result<TokenStream, LexError> {
             })
         }
 
-        res.push((i, Span::from_logos(lexed.span(), source.clone())))
+        res.push((i, Span::from_logos(lexed.span(), source.clone())));
     }
 
     Ok(TokenStream{
@@ -224,6 +224,38 @@ mod tests {
         ";
 
         lex(Source::test(src)).nice_unwrap_panic();
+    }
+
+    #[test]
+    fn timespec() {
+        let src = "3ns";
+        let tokens = lex(Source::test(src)).nice_unwrap();
+        assert!(matches!(
+            tokens.tokens.first(),
+            Some(&(Token::Time(3), _))
+        ), "{:?}", tokens.tokens.first());
+
+        let src = "3us";
+        let tokens = lex(Source::test(src)).nice_unwrap();
+        assert!(matches!(
+            tokens.tokens.first(),
+            Some(&(Token::Time(3_000), _))
+        ), "{:?}", tokens.tokens.first());
+
+
+        let src = "3ms";
+        let tokens = lex(Source::test(src)).nice_unwrap();
+        assert!(matches!(
+            tokens.tokens.first(),
+            Some(&(Token::Time(3_000_000), _))
+        ), "{:?}", tokens.tokens.first());
+
+        let src = "3s";
+        let tokens = lex(Source::test(src)).nice_unwrap();
+        assert!(matches!(
+            tokens.tokens.first(),
+            Some(&(Token::Time(3_000_000_000), _))
+        ), "{:?}", tokens.tokens.first());
     }
 
     #[test]

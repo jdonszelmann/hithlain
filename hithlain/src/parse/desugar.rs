@@ -108,30 +108,29 @@ pub struct UnusedVariable {
 }
 
 
-
-pub fn desugar_program(p: a::Program) -> Result<d::Program, DesugarError> {
+pub fn desugar_program(p: &a::Program) -> Result<d::Program, DesugarError> {
     let mut circuits = HashMap::new();
-    for i in p.circuits.iter() {
+    for i in &p.circuits {
         circuits.insert(&i.name, None);
     }
 
     let mut desugared_circuits = Vec::new();
 
     let mut delayed = HashMap::new();
-    for c in p.circuits.iter() {
+    for c in &p.circuits {
         match desugar_circuit(c, &mut circuits) {
             Ok(i) => {
                 let i = i?;
 
                 circuits.insert(&c.name, Some(i.clone()));
 
-                desugared_circuits.push(i)
-            },
+                desugared_circuits.push(i);
+            }
             Err(needed) => {
                 delayed.entry(c).and_modify(|i: &mut Vec<Variable>| {
                     i.extend_from_slice(&needed);
                 }).or_insert(needed);
-            },
+            }
         }
     }
 
@@ -180,10 +179,10 @@ fn desugar_circuit(circuit: &a::Circuit, circuit_names: &mut HashMap<&a::Variabl
                 UnassignedOutput {
                     src: span.source().clone().into(),
                     variable: i.0.variable.clone(),
-                    span: span.clone().into()
-                }.warn()
+                    span: span.clone().into(),
+                }.warn();
             } else {
-                unreachable!("out variable must have source reference")
+                unreachable!("out variable must have source reference");
             }
         }
 
@@ -193,10 +192,10 @@ fn desugar_circuit(circuit: &a::Circuit, circuit_names: &mut HashMap<&a::Variabl
                 UnusedVariable {
                     src: span.source().clone().into(),
                     variable: i.0.variable.clone(),
-                    span: span.clone().into()
-                }.warn()
+                    span: span.clone().into(),
+                }.warn();
             } else {
-                unreachable!("out variable must have source reference")
+                unreachable!("out variable must have source reference");
             }
         }
 
@@ -205,11 +204,11 @@ fn desugar_circuit(circuit: &a::Circuit, circuit_names: &mut HashMap<&a::Variabl
                 return Ok(Err(VariableNeverWritten {
                     src: span.source().clone().into(),
                     variable: i.0.variable.clone(),
-                    span: span.clone().into()
-                }.into()))
-            } else {
-                unreachable!("out variable must have source reference")
+                    span: span.clone().into(),
+                }.into()));
             }
+
+            unreachable!("out variable must have source reference");
         }
     }
 
@@ -217,7 +216,7 @@ fn desugar_circuit(circuit: &a::Circuit, circuit_names: &mut HashMap<&a::Variabl
         name: circuit.name.clone(),
         inputs,
         outputs,
-        body
+        body,
     })))
 }
 
@@ -233,10 +232,10 @@ fn desugar_test(test: &a::Test, circuit_names: &mut HashMap<&a::Variable, Option
                 UnusedVariable {
                     src: span.source().clone().into(),
                     variable: i.0.variable.clone(),
-                    span: span.clone().into()
-                }.warn()
+                    span: span.clone().into(),
+                }.warn();
             } else {
-                unreachable!("out variable must have source reference")
+                unreachable!("out variable must have source reference");
             }
         }
 
@@ -245,11 +244,11 @@ fn desugar_test(test: &a::Test, circuit_names: &mut HashMap<&a::Variable, Option
                 return Err(VariableNeverWritten {
                     src: span.source().clone().into(),
                     variable: i.0.variable.clone(),
-                    span: span.clone().into()
-                }.into())
-            } else {
-                unreachable!("out variable must have source reference")
+                    span: span.clone().into(),
+                }.into());
             }
+
+            unreachable!("out variable must have source reference");
         }
     }
 
@@ -258,16 +257,16 @@ fn desugar_test(test: &a::Test, circuit_names: &mut HashMap<&a::Variable, Option
         timed_blocks,
 
         inputs: vec![],
-        outputs: vec![]
+        outputs: vec![],
     })
 }
 
-fn desugar_timed_blocks(statements: &Vec<a::StatementOrTime>, blocks: &mut Vec<d::TimedBlock>, circuit_names: &mut HashMap<&Variable, Option<Rc<d::Circuit>>>, scope: &mut Scope) -> Result<(), DesugarError> {
+fn desugar_timed_blocks(statements: &[a::StatementOrTime], blocks: &mut Vec<d::TimedBlock>, circuit_names: &mut HashMap<&Variable, Option<Rc<d::Circuit>>>, scope: &mut Scope) -> Result<(), DesugarError> {
     let mut statement_iter = statements.iter();
 
     let mut current_block = TimedBlock {
         time: Instant::START,
-        block: vec![]
+        block: vec![],
     };
 
 
@@ -278,23 +277,23 @@ fn desugar_timed_blocks(statements: &Vec<a::StatementOrTime>, blocks: &mut Vec<d
                 blocks.push(current_block);
                 current_block = TimedBlock {
                     time: current_time.after(d),
-                    block: vec![]
+                    block: vec![],
                 }
-            },
+            }
             Some(StatementOrTime::Time(a::TimeSpec::At(d))) => {
                 blocks.push(current_block);
                 current_block = TimedBlock {
                     time: *d,
-                    block: vec![]
+                    block: vec![],
                 }
-            },
+            }
             Some(StatementOrTime::Statement(s)) => {
                 let ds = match desugar_statement(s, circuit_names, scope) {
                     Ok(i) => i,
                     Err(e) => {
                         dbg!(e);
                         unreachable!("all circuits have been resolved when tests are desugared")
-                    },
+                    }
                 }?;
 
                 current_block.block.extend(ds);
@@ -347,9 +346,9 @@ fn desugar_statement(statement: &a::Statement, circuit_names: &mut HashMap<&a::V
             Ok(Ok(res))
         }
     }
-
 }
 
+#[allow(clippy::too_many_lines)]
 fn desugar_expr(expr: &a::Expr, into: Vec<VariableRef>, res: &mut Vec<d::Statement>, circuit_names: &mut HashMap<&a::Variable, Option<Rc<d::Circuit>>>, scope: &mut Scope) -> Result<Result<(), DesugarError>, Vec<Variable>> {
     macro_rules! cleanup {
         ($($tt: tt)*) => {
@@ -385,133 +384,131 @@ fn desugar_expr(expr: &a::Expr, into: Vec<VariableRef>, res: &mut Vec<d::Stateme
         };
     }
 
-     match expr {
-         Expr::BinaryOp { a, b, action } => {
-             let a_var = match scope.define_temp_variable() {
-                 Ok(i) => i,
-                 Err(e) => return Ok(Err(e.into())),
-             };
-             let b_var = match scope.define_temp_variable() {
-                 Ok(i) => i,
-                 Err(e) => return Ok(Err(e.into())),
-             };
+    match expr {
+        Expr::BinaryOp { a, b, action } => {
+            let a_var = match scope.define_temp_variable() {
+                Ok(i) => i,
+                Err(e) => return Ok(Err(e.into())),
+            };
+            let b_var = match scope.define_temp_variable() {
+                Ok(i) => i,
+                Err(e) => return Ok(Err(e.into())),
+            };
 
-             cleanup!(desugar_expr(a, vec![a_var.clone()], res, circuit_names, scope));
-             cleanup!(desugar_expr(b, vec![b_var.clone()], res, circuit_names, scope));
+            cleanup!(desugar_expr(a, vec![a_var.clone()], res, circuit_names, scope));
+            cleanup!(desugar_expr(b, vec![b_var.clone()], res, circuit_names, scope));
 
-             match action {
-                 BinaryAction::And => {
-                     res.push(Statement::And(BinaryBuiltin {
-                         a: a_var,
-                         b: b_var,
-                         into: get_first!(into),
-                     }))
-                 }
-                 BinaryAction::Or => {
-                     res.push(Statement::Or(BinaryBuiltin {
-                         a: a_var,
-                         b: b_var,
-                         into: get_first!(into),
-                     }))
-                 }
-                 BinaryAction::Nand => {
-                     res.push(Statement::Nand(BinaryBuiltin {
-                         a: a_var,
-                         b: b_var,
-                         into: get_first!(into),
-                     }))
-                 }
-                 BinaryAction::Nor => {
-                     res.push(Statement::Nor(BinaryBuiltin {
-                         a: a_var,
-                         b: b_var,
-                         into: get_first!(into),
-                     }))
-                 }
-                 BinaryAction::Xor => {
-                     res.push(Statement::Xor(BinaryBuiltin {
-                         a: a_var,
-                         b: b_var,
-                         into: get_first!(into),
-                     }))
-                 }
-                 BinaryAction::Xnor => {
-                     res.push(Statement::Xnor(BinaryBuiltin {
-                         a: a_var,
-                         b: b_var,
-                         into: get_first!(into),
-                     }))
-                 }
-                 BinaryAction::Custom(_) => unimplemented!("TODO") // TODO
-             }
-         }
-         Expr::NaryOp { params, action } => {
-             let mut param_vars = Vec::new();
-             for i in params {
-                 let var = match scope.define_temp_variable() {
-                     Ok(i) => i,
-                     Err(e) => return Ok(Err(e.into())),
-                 };
+            match action {
+                BinaryAction::And => {
+                    res.push(Statement::And(BinaryBuiltin {
+                        a: a_var,
+                        b: b_var,
+                        into: get_first!(into),
+                    }));
+                }
+                BinaryAction::Or => {
+                    res.push(Statement::Or(BinaryBuiltin {
+                        a: a_var,
+                        b: b_var,
+                        into: get_first!(into),
+                    }));
+                }
+                BinaryAction::Nand => {
+                    res.push(Statement::Nand(BinaryBuiltin {
+                        a: a_var,
+                        b: b_var,
+                        into: get_first!(into),
+                    }));
+                }
+                BinaryAction::Nor => {
+                    res.push(Statement::Nor(BinaryBuiltin {
+                        a: a_var,
+                        b: b_var,
+                        into: get_first!(into),
+                    }));
+                }
+                BinaryAction::Xor => {
+                    res.push(Statement::Xor(BinaryBuiltin {
+                        a: a_var,
+                        b: b_var,
+                        into: get_first!(into),
+                    }));
+                }
+                BinaryAction::Xnor => {
+                    res.push(Statement::Xnor(BinaryBuiltin {
+                        a: a_var,
+                        b: b_var,
+                        into: get_first!(into),
+                    }));
+                }
+                BinaryAction::Custom(_) => unimplemented!("TODO") // TODO
+            }
+        }
+        Expr::NaryOp { params, action } => {
+            let mut param_vars = Vec::new();
+            for i in params {
+                let var = match scope.define_temp_variable() {
+                    Ok(i) => i,
+                    Err(e) => return Ok(Err(e.into())),
+                };
 
-                 cleanup!(desugar_expr(i, vec![var.clone()], res, circuit_names, scope));
+                cleanup!(desugar_expr(i, vec![var.clone()], res, circuit_names, scope));
 
-                 param_vars.push(var);
-             }
+                param_vars.push(var);
+            }
 
-             match action {
-                 NaryAction::UnaryAction(action) => {
-                     match action {
-                         UnaryAction::Not => {
-                             res.push(Statement::Not {
-                                 input: get_first!(param_vars),
-                                 into: get_first!(into),
-                             })
-                         }
-                     }
-                 },
-                 NaryAction::BinaryAction(_) => unimplemented!(),
-                 NaryAction::Custom(c) => {
-                     if let Some(circuit_exists) = circuit_names.get(c) {
-                         if let Some(circuit) = circuit_exists {
-                             res.push(Statement::Custom {
-                                 inputs: param_vars,
-                                 circuit: circuit.clone(),
-                                 into,
-                             });
-                         } else {
-                            return Err(vec![c.clone()])
-                         }
-                     } else {
-                         if let Some(ref i) = c.1 {
-                             return Ok(Err(CircuitDoesntExist {
-                                 src: i.source().clone().into(),
-                                 variable: c.clone(),
-                                 span: i.clone().into()
-                             }.into()))
-                         } else {
-                             unreachable!("circuit name must have a source location")
-                         }
-                     }
-                 }
-             }
-         }
-         Expr::Atom(a) => {
-             match a {
-                 Atom::Variable(v) => {
-                     res.push(Statement::Move(get_first!(into), match scope.lookup_variable_read(v) {
-                         Ok(i) => i,
-                         Err(e) => return Ok(Err(e.into())),
-                     }));
-                 }
-                 Atom::Constant(v) => {
-                     res.push(Statement::Set(get_first!(into), v.clone()));
-                 }
-                 Atom::Expr(e) => {
-                     return desugar_expr(e, into, res, circuit_names, scope);
-                 }
-             }
-         }
-     }
+            match action {
+                NaryAction::UnaryAction(action) => {
+                    match action {
+                        UnaryAction::Not => {
+                            res.push(Statement::Not {
+                                input: get_first!(param_vars),
+                                into: get_first!(into),
+                            });
+                        }
+                    }
+                }
+                NaryAction::BinaryAction(_) => unimplemented!(),
+                NaryAction::Custom(c) => {
+                    if let Some(circuit_exists) = circuit_names.get(c) {
+                        if let Some(circuit) = circuit_exists {
+                            res.push(Statement::Custom {
+                                inputs: param_vars,
+                                circuit: circuit.clone(),
+                                into,
+                            });
+                        } else {
+                            return Err(vec![c.clone()]);
+                        }
+                    } else if let Some(ref i) = c.1 {
+                        return Ok(Err(CircuitDoesntExist {
+                            src: i.source().clone().into(),
+                            variable: c.clone(),
+                            span: i.clone().into(),
+                        }.into()));
+                    } else {
+                        unreachable!("circuit name must have a source location");
+                    }
+                }
+            }
+        }
+        Expr::Atom(a) => {
+            match a {
+                Atom::Variable(v) => {
+                    res.push(Statement::Move(get_first!(into), match scope.lookup_variable_read(v) {
+                        Ok(i) => i,
+                        Err(e) => return Ok(Err(e.into())),
+                    }));
+                }
+                Atom::Constant(v) => {
+                    res.push(Statement::Set(get_first!(into), v.clone()));
+                }
+                Atom::Expr(e) => {
+                    return desugar_expr(e, into, res, circuit_names, scope);
+                }
+            }
+        }
+    }
 
     Ok(Ok(()))
 }

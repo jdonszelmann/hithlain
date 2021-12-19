@@ -1,14 +1,14 @@
-use clap::{App, Arg, SubCommand, ArgMatches};
+use clap::{App, Arg, SubCommand};
 use clap::{crate_version, crate_authors, crate_description};
 use hithlain::parse::lexer::lex;
 use hithlain::parse::source::Source;
-use hithlain::error::{HithlainError, NiceUnwrap};
+use hithlain::error::{NiceUnwrap};
 use hithlain::parse::parser::Parser;
 use hithlain::parse::desugar::desugar_program;
 use hithlain::sim::Simulator;
 use hithlain::sim::config::{SimulationConfig, VcdPath};
-use hithlain::time::Duration;
-use hithlain::miette;
+
+
 
 
 fn main() {
@@ -75,23 +75,24 @@ fn main() {
     let filename = matches.value_of("input").expect("input file required");
 
 
-    let lexed = lex(Source::file(filename).nice_unwrap()).nice_unwrap();
+    let lexed = lex(&Source::file(filename).nice_unwrap()).nice_unwrap();
     let mut parser = Parser::new(lexed);
     let parsed = parser.parse_program().nice_unwrap();
-    let desugared = desugar_program(parsed).nice_unwrap();
+    let desugared = desugar_program(&parsed).nice_unwrap();
 
 
     match matches.subcommand() {
-        ("transpile", args) => {
+        ("transpile", _args) => {
 
         }
         ("simulate", Some(args)) => {
             let entrypoint = args.value_of("entry").expect("entry point required");
 
-            let mut cfg = SimulationConfig::default();
-
-            cfg.create_vcd = true;
-            cfg.vcd_path = VcdPath::Path(args.value_of("output").expect("has default").into());
+            let cfg = SimulationConfig {
+                create_vcd: true,
+                vcd_path: VcdPath::Path(args.value_of("output").expect("has default").into()),
+                ..SimulationConfig::default()
+            };
 
             let sim = Simulator::new(desugared, cfg).nice_unwrap();
             sim.run_test(entrypoint).nice_unwrap();

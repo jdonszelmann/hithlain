@@ -15,6 +15,7 @@ pub struct Variable (
 );
 
 impl Variable {
+    #[must_use]
     pub fn localize(&self, path: Rc<Vec<Package>>) -> LocalizedVariable {
         LocalizedVariable {
             variable: self.clone(),

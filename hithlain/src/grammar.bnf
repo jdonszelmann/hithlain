@@ -1,7 +1,58 @@
 
-<program> ::= <test> <program> | <circuit> <program> | <empty>
+<program> ::= <test> <program> | <circuit> <program> | ""
 
-<empty> ::= ""
+<01> ::= "0" | "1"
+<09> ::= <01>| "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+<number> ::= <09> <number> | <09>
 
-<test> ::= "test"
-<circuit> ::= "circuit"
+<az> ::= "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z"
+<AZ> ::= "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
+
+<name-char> ::= <az> | <AZ> | "_"
+<name-end-char> ::= <name-char> | <09>
+
+<name-end> ::= <name-end-char> <name-end> | <name-end-char>
+<name> ::= <name-char> <name-end> | <name-char>
+
+<timeunit> ::= "ns" | "us" | "ms" | "s"
+<time> ::= <number> <timeunit>
+
+<constant> ::= <01>
+<atom> ::=
+    <constant>
+  | <name>
+  | "(" <expr> ")"
+
+<expr> ::=
+    <atom>
+  | "not" "(" <atom> ")"
+  | <atom> " and " <atom>
+  | <atom> " or " <atom>
+  | <atom> " nand " <atom>
+  | <atom> " nor " <atom>
+  | <atom> " xor " <atom>
+  | <atom> " xnor " <atom>
+  | <name> "(" <param-list> ")"
+
+<param-list-end> ::= "," <param-list>
+<param-list> ::= <name> <param-list-end> | <name>
+
+<target-end> ::= "," <target>
+<target> ::= <name> <target-end> | <name>
+
+<assignment> ::= <target> "=" <expr>
+<assert> ::= "assert" " " <expr>
+
+<statement> ::= <assert> ";" | <assignment> ";"
+<timedecl> ::= "at" " " <time> ":" | "after" " " <time> ":"
+<statement-or-timedecl> ::= <statement> | <timedecl>
+
+<process-body> ::= <statement-or-timedecl> <process-body> | ""
+<circuit-body> ::= <statement> <circuit-body> | ""
+
+<io-list-end> ::= "," <io-list> | <io-list>
+<io-list> ::= <name> <io-list-end> | ""
+<io> ::= ":" <io-list> "->" <io-list>  | ""
+
+<test> ::= "test" " " <name> " " "{" <process-body> "}"
+<circuit> ::= "circuit" " " <name> " " <io> "{" <circuit-body> "}"

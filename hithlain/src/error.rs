@@ -7,6 +7,7 @@ use crate::sim::SimulationError;
 use crate::parse::source::SourceError;
 use crate::parse::lexer::LexError;
 use crate::time::TimespecError;
+#[cfg(not(test))]
 use std::process::exit;
 
 pub trait NiceUnwrap {
@@ -36,8 +37,12 @@ impl<T, E> NiceUnwrap for Result<T, E> where E: Diagnostic {
             Err(e) => {
                 let mut s = String::new();
                 GraphicalReportHandler::new().with_links(true).render_report(&mut s, &e).unwrap();
+                #[cfg(not(test))]
                 eprintln!("{}", s);
+                #[cfg(not(test))]
                 exit(1);
+                #[cfg(test)]
+                panic!("{}", s)
             },
         }
     }

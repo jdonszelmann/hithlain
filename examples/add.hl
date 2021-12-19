@@ -1,0 +1,31 @@
+
+
+circuit add: a b c_in -> o c_out {
+    o = a xor b xor c_in;
+    c_out = (a and b) or ((a xor b) and c_in);
+}
+
+test main {
+    o, c_out = add(a, b, 0);
+
+    at 0ns:
+        a = 1;
+        b = 1;
+
+        assert o == 0;
+        assert c_out == 1;
+
+    after 5ns:
+        a = 0;
+        b = 0;
+
+        assert o == 0;
+        assert c_out == 0;
+
+    after 5ns:
+        a = 1;
+        b = 0;
+
+        assert o == 1;
+        assert c_out == 0;
+}

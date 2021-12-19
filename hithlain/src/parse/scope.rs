@@ -55,10 +55,18 @@ pub struct Scope {
     temps: usize,
 }
 
+impl Default for Scope {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+
 impl Scope {
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            variables: Default::default(),
+            variables: HashMap::default(),
             temps: 0
         }
     }

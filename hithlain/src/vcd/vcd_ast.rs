@@ -9,6 +9,7 @@ pub struct VcdModule {
     pub(crate) submodules: Vec<VcdModule>,
 }
 
+#[must_use]
 pub fn process_to_vcd_ast(process: &Process) -> VcdModule {
     let mut submodules = Vec::new();
     let mut variables = HashSet::new();
@@ -29,20 +30,13 @@ pub fn process_to_vcd_ast(process: &Process) -> VcdModule {
         name: process.name.clone(),
         variables: variables.into_iter()
             .filter(|i| !i.generated)
-            .filter(|i| if let Some(i) = i.original.path.last() {
-                if i.name() == &process.name {
-                    true
-                } else {
-                    false
-                }
-            } else {
-                false
-            })
+            .filter(|i| i.original.path.last().map_or(false, |i| i.name() == &process.name))
             .collect(),
         submodules,
     }
 }
 
+#[must_use]
 pub fn circuit_to_vcd_ast(circuit: &Circuit) -> VcdModule {
     let mut submodules = Vec::new();
     let mut variables = HashSet::new();
@@ -56,7 +50,7 @@ pub fn circuit_to_vcd_ast(circuit: &Circuit) -> VcdModule {
     }
 
     for i in &circuit.body {
-        analyze_statement(i, &mut variables, &mut submodules)
+        analyze_statement(i, &mut variables, &mut submodules);
     }
 
 
@@ -64,15 +58,7 @@ pub fn circuit_to_vcd_ast(circuit: &Circuit) -> VcdModule {
         name: circuit.name.clone(),
         variables: variables.into_iter()
             .filter(|i| !i.generated)
-            .filter(|i| if let Some(i) = i.original.path.last() {
-                if i.name() == &circuit.name {
-                    true
-                } else {
-                    false
-                }
-            } else {
-                false
-            })
+            .filter(|i| i.original.path.last().map_or(false, |i| i.name() == &circuit.name))
             .collect(),
         submodules,
     }
@@ -80,7 +66,7 @@ pub fn circuit_to_vcd_ast(circuit: &Circuit) -> VcdModule {
 
 fn analyze_timed_block(t: &TimedBlock, variables: &mut HashSet<UniqueVariableRef>, submodules: &mut Vec<VcdModule>){
     for i in &t.block {
-        analyze_statement(i, variables, submodules)
+        analyze_statement(i, variables, submodules);
     }
 }
 

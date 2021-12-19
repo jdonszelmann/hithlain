@@ -56,6 +56,7 @@ pub struct Process {
 }
 
 pub struct Program {
+
     pub(crate) circuits: Vec<Rc<Circuit>>,
     pub(crate) tests: Vec<Rc<Process>>,
 }

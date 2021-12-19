@@ -78,19 +78,20 @@ fn or_unexpected_end<T>(i: Option<T>, description: impl AsRef<str>, span: impl F
         return Err(UnexpectedEnd {
             expected: description.as_ref().to_string(),
             span: span.clone().into(),
-            src: span.source().clone().into()
-        })
+            src: span.source().clone().into(),
+        });
     }
 }
 
 
 impl Parser {
+    #[must_use]
     pub fn new(tokens: TokenStream) -> Self {
         Self {
             tokens: tokens.into_iter(),
             previous_span: None,
             current_span: None,
-            current_token: None
+            current_token: None,
         }
     }
 
@@ -141,53 +142,52 @@ impl Parser {
     }
 
     fn expect_single_token(&mut self, t: &Token, description: Option<String>) -> Result<(), ParseError> {
-        let mut spn = self.current_span().clone();
+        let mut spn = self.current_span();
         let (tkn, t_spn) = or_unexpected_end(self.peek(), "circuit name", || spn.clone())?;
         spn = t_spn.clone();
 
         if tkn == t {
             self.next();
-            return Ok(())
+            return Ok(());
         }
 
         return Err(UnexpectedToken {
             expected: description.unwrap_or(format!("`{}`", t)),
             found: tkn.clone(),
             span: spn.clone().into(),
-            src: spn.source().clone().into()
-        }.into())
+            src: spn.source().clone().into(),
+        }.into());
     }
 
-    pub fn parse_variable(&mut self, description: Option<String>) -> Result<Variable, ParseError>  {
-        let (tok, spn) = or_unexpected_end(self.peek().cloned(), "circuit name", || self.previous_span())?;
+    pub fn parse_variable(&mut self, description: Option<String>) -> Result<Variable, ParseError> {
+        let (tok, spn) = or_unexpected_end(self.peek().cloned(), description.clone().unwrap_or_else(|| "variable".to_string()), || self.previous_span())?;
 
         if let Token::Name(name) = tok {
-            let name = name.clone();
+            let name = name;
             self.next();
             Ok(Variable(name, Some(spn)))
         } else {
             return Err(UnexpectedToken {
-                expected: description.unwrap_or("variable".to_string()),
+                expected: description.unwrap_or_else(|| "variable".to_string()),
                 found: tok,
                 span: spn.clone().into(),
-                src: spn.source().clone().into()
-            }.into())
+                src: spn.source().clone().into(),
+            }.into());
         }
     }
 
     pub fn parse_constant(&mut self, description: Option<String>) -> Result<Constant, ParseError> {
-        let (tok, spn) = or_unexpected_end(self.peek().cloned(), "circuit name", || self.previous_span())?;
+        let (tok, spn) = or_unexpected_end(self.peek().cloned(), description.clone().unwrap_or_else(|| "variable".to_string()), || self.previous_span())?;
 
         if let Token::Bit(value) = tok {
-            let value = value.clone();
             self.next();
             Ok(Constant::Bit(value))
         } else {
-            return Err(UnexpectedToken {
-                expected: description.unwrap_or("variable".to_string()),
+            Err(UnexpectedToken {
+                expected: description.unwrap_or_else(|| "variable".to_string()),
                 found: tok,
                 span: spn.clone().into(),
-                src: spn.source().clone().into()
+                src: spn.source().clone().into(),
             }.into())
         }
     }
@@ -195,28 +195,24 @@ impl Parser {
     pub fn parse_atom(&mut self) -> Result<Expr, ParseError> {
         if let Ok(i) = self.parse_variable(None) {
             Ok(Expr::Atom(Atom::Variable(i)))
+        } else if let Ok(i) = self.parse_constant(None) {
+            Ok(Expr::Atom(Atom::Constant(i)))
         } else {
-            if let Ok(i) = self.parse_constant(None) {
-                Ok(Expr::Atom(Atom::Constant(i)))
-            } else {
-                if let Some(i) = self.peek() {
-                    if let (Token::LParen, _) = i {
-                        self.next(); // opening paren
-                        let expr = self.parse_expr()?;
-                        let res = Atom::Expr(Box::new(expr));
+            if let Some((Token::LParen, _)) = self.peek() {
+                self.next(); // opening paren
+                let expr = self.parse_expr()?;
+                let res = Atom::Expr(Box::new(expr));
 
-                        self.expect_single_token(&Token::RParen, Some("closing parenthesis".to_string()))?;
+                self.expect_single_token(&Token::RParen, Some("closing parenthesis".to_string()))?;
 
-                        return Ok(Expr::Atom(res))
-                    }
-                }
-                return Err(UnexpectedToken {
-                    expected: "variable, constant value or parenthesized expression".to_string(),
-                    found: self.current_token().clone(),
-                    span: self.current_span().into(),
-                    src: self.current_span().source().clone().into()
-                }.into())
+                return Ok(Expr::Atom(res));
             }
+            return Err(UnexpectedToken {
+                expected: "variable, constant value or parenthesized expression".to_string(),
+                found: self.current_token(),
+                span: self.current_span().into(),
+                src: self.current_span().source().clone().into(),
+            }.into());
         }
     }
 
@@ -230,8 +226,7 @@ impl Parser {
                 Token::Nand => BinaryAction::Nand,
                 Token::Nor => BinaryAction::Nor,
                 Token::Xor => BinaryAction::Xor,
-                Token::Xnor => BinaryAction::Xnor,
-                Token::Eq => BinaryAction::Xnor,
+                Token::Xnor | Token::Eq => BinaryAction::Xnor,
                 _ => break,
             };
 
@@ -250,7 +245,7 @@ impl Parser {
             root = Expr::BinaryOp {
                 a: Box::new(root),
                 b: Box::new(right_side),
-                action: op
+                action: op,
             };
         }
 
@@ -266,9 +261,9 @@ impl Parser {
         loop {
             let (tok, _) = or_unexpected_end(self.peek().cloned(), "statement or time specification", || self.previous_span())?;
             if tok == Token::Comma {
-                self.next().unwrap();
+                self.next();
 
-                params.push(self.parse_atom()?)
+                params.push(self.parse_atom()?);
             } else {
                 break;
             }
@@ -277,16 +272,16 @@ impl Parser {
         self.expect_single_token(&Token::RParen, Some("closing parenthesis".to_string()))?;
 
 
-        return Ok(Expr::NaryOp {
+        Ok(Expr::NaryOp {
             params,
-            action: NaryAction::Custom(circuit)
+            action: NaryAction::Custom(circuit),
         })
     }
 
     pub fn parse_expr(&mut self) -> Result<Expr, ParseError> {
         if let Some([(tok1, _), (tok2, _)]) = self.peek_2() {
             if matches!(tok1, Token::Name(_)) && tok2 == Token::LParen {
-                return self.parse_call()
+                return self.parse_call();
             }
         }
 
@@ -302,8 +297,8 @@ impl Parser {
                     params: vec![param],
                     action: NaryAction::UnaryAction(
                         UnaryAction::Not
-                    )
-                })
+                    ),
+                });
             }
         }
 
@@ -320,8 +315,8 @@ impl Parser {
 
                 return Ok(Statement::Assert {
                     expr,
-                    span: spn.merge_with(&self.current_span())
-                })
+                    span: spn.merge_with(&self.current_span()),
+                });
             }
         }
 
@@ -331,9 +326,9 @@ impl Parser {
         loop {
             let (tok, _) = or_unexpected_end(self.peek().cloned(), "statement or time specification", || self.previous_span())?;
             if tok == Token::Comma {
-                self.next().unwrap();
+                self.next();
 
-                vars.push(self.parse_variable(Some("another variable to assign the expression outcome to".to_string()))?)
+                vars.push(self.parse_variable(Some("another variable to assign the expression outcome to".to_string()))?);
             } else {
                 break;
             }
@@ -354,41 +349,41 @@ impl Parser {
     }
 
     pub fn parse_statement_or_time(&mut self) -> Result<StatementOrTime, ParseError> {
-        let (tok, spn) = or_unexpected_end(self.peek().cloned(), "statement or time specification", || self.previous_span())?;
+        let (tok, _) = or_unexpected_end(self.peek().cloned(), "statement or time specification", || self.previous_span())?;
 
-        let tkn = match tok {
+        let (tkn, spn) = match tok {
             Token::After => {
-                self.next().unwrap();
+                self.next();
 
-                let spn = self.current_span().clone();
-                let (tkn, _) = or_unexpected_end(self.peek(), "circuit name", || spn.clone())?;
+                let spn = self.current_span();
+                let (tkn, spn) = or_unexpected_end(self.peek(), "circuit name", || spn.clone())?;
 
-                if let &Token::Time(a) = tkn {
+                if let Token::Time(a) = *tkn {
                     self.next();
 
                     self.expect_single_token(&Token::Colon, None)?;
 
-                    return Ok(StatementOrTime::Time(TimeSpec::After(Duration::from_nanos(a))))
-                } else {
-                    tkn
+                    return Ok(StatementOrTime::Time(TimeSpec::After(Duration::from_nanos(a))));
                 }
-            },
+
+                (tkn, spn)
+            }
             Token::At => {
-                self.next().unwrap();
+                self.next();
 
-                let spn = self.current_span().clone();
-                let (tkn, _) = or_unexpected_end(self.peek(), "circuit name", || spn.clone())?;
+                let spn = self.current_span();
+                let (tkn, spn) = or_unexpected_end(self.peek(), "circuit name", || spn.clone())?;
 
-                if let &Token::Time(a) = tkn {
+                if let Token::Time(a) = *tkn {
                     self.next();
 
                     self.expect_single_token(&Token::Colon, None)?;
 
-                    return Ok(StatementOrTime::Time(TimeSpec::At(Instant::nanos_from_start(a))))
-                } else {
-                    tkn
+                    return Ok(StatementOrTime::Time(TimeSpec::At(Instant::nanos_from_start(a))));
                 }
-            },
+
+                (tkn, spn)
+            }
             _ => return Ok(StatementOrTime::Statement(self.parse_statement()?))
         };
 
@@ -396,16 +391,13 @@ impl Parser {
             expected: "time".to_string(),
             found: tkn.clone(),
             span: spn.clone().into(),
-            src: spn.source().clone().into()
+            src: spn.source().clone().into(),
         }.into())
     }
 
-    pub fn parse_circuit(&mut self) -> Result<Circuit, ParseError> {
-        let (_circuit, _) = self.next().unwrap();
-        let name = self.parse_variable(Some("circuit name".to_string()))?;
-        self.expect_single_token(&Token::Colon, Some(format!("`:` in definition of circuit {}", name.0)))?;
-
+    pub fn parse_io(&mut self) -> Result<(Vec<Variable>, Vec<Variable>), ParseError> {
         let mut inputs = Vec::new();
+        let mut outputs = Vec::new();
 
         loop {
             let span = self.current_span();
@@ -420,8 +412,6 @@ impl Parser {
             self.allow_single_token(&Token::Comma);
         }
 
-        let mut outputs = Vec::new();
-
         loop {
             let span = self.current_span();
             match or_unexpected_end(self.peek(), "circuit name", || span)? {
@@ -435,11 +425,41 @@ impl Parser {
             self.allow_single_token(&Token::Comma);
         }
 
+        Ok((inputs, outputs))
+    }
+
+    pub fn parse_circuit(&mut self) -> Result<Circuit, ParseError> {
+        self.next();
+        let name = self.parse_variable(Some("circuit name".to_string()))?;
+
+        // either name ':' <inp> -> <out> <block>
+        // or     name <block>
+        let spn = self.current_span();
+        let (inputs, outputs) = match or_unexpected_end(self.peek(), "`:` or `{`", || spn)? {
+            (Token::Colon, _) => {
+                self.next();
+                self.parse_io()?
+            }
+            (Token::LBrace, _) => {
+                self.next();
+                (Vec::new(), Vec::new())
+            }
+            (tok, spn) => {
+                return Err(UnexpectedToken {
+                    src: spn.source().clone().into(),
+                    span: spn.clone().into(),
+                    expected: format!("`:` followed by inputs and outputs, or body of circuit {}", name.0),
+                    found: tok.clone(),
+                }.into());
+            }
+        };
+
+
         let mut body = Vec::new();
 
         loop {
-            let span = self.current_span();
-            match or_unexpected_end(self.peek(), "circuit name", || span)? {
+            let temp_span = self.current_span();
+            match or_unexpected_end(self.peek(), "circuit name", || temp_span)? {
                 (Token::RBrace, _) => {
                     self.next();
                     break;
@@ -459,7 +479,7 @@ impl Parser {
 
 
     pub fn parse_process(&mut self) -> Result<Process, ParseError> {
-        let (_test, _) = self.next().unwrap();
+        self.next();
         let name = self.parse_variable(Some("process name".to_string()))?;
 
         let mut body = Vec::new();
@@ -486,7 +506,7 @@ impl Parser {
     }
 
     pub fn parse_test(&mut self) -> Result<Test, ParseError> {
-        let (_test, _) = self.next().unwrap();
+        self.next();
         let name = self.parse_variable(Some("test name".to_string()))?;
 
         let mut body = Vec::new();
@@ -515,25 +535,24 @@ impl Parser {
         let mut tests = Vec::new();
         let mut processes = Vec::new();
         while let Some((tok, spn)) = self.peek() {
-            println!("{:?}", tok);
             match tok {
                 Token::Circuit => {
-                    circuits.push(self.parse_circuit()?)
-                },
+                    circuits.push(self.parse_circuit()?);
+                }
                 Token::Test => {
-                    tests.push(self.parse_test()?)
-                },
+                    tests.push(self.parse_test()?);
+                }
                 Token::Process => {
-                    processes.push(self.parse_process()?)
-                },
+                    processes.push(self.parse_process()?);
+                }
                 Token::Error => unreachable!(),
                 i => {
                     return Err(UnexpectedToken {
                         expected: "circuit definition".to_string(),
                         found: i.clone(),
                         span: spn.clone().into(),
-                        src: spn.source().clone().into()
-                    }.into())
+                        src: spn.source().clone().into(),
+                    }.into());
                 }
             }
         }

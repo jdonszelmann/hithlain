@@ -6,6 +6,7 @@ use crate::time::Instant;
 use crate::sim::instantiated_ast::Statement;
 
 
+#[must_use]
 pub fn link_statement_list(statements: Vec<Statement>, do_sets: bool) -> Vec<Condition> {
     macro_rules! binary_stmt {
         ($path: path, $($tt: tt)*) => {
@@ -28,7 +29,7 @@ pub fn link_statement_list(statements: Vec<Statement>, do_sets: bool) -> Vec<Con
     }
 
     statements.into_iter()
-        .map(|i| match i {
+        .flat_map(|i| match i {
             inst::Statement::Not { input, into } => {
                 vec![Condition::WhenChanges { variable: input.clone(), run:  Rc::new(l::Statement::Not{input, into})}]
             }
@@ -51,26 +52,27 @@ pub fn link_statement_list(statements: Vec<Statement>, do_sets: bool) -> Vec<Con
             }
             Statement::Assert(_, _) => vec![], // ignore asserts in normal statements (shouldn't be parsed anyway)
         })
-        .flatten()
         .collect()
 }
 
+#[must_use]
 pub fn link_circuit(circuit: inst::Circuit) -> Vec<Condition> {
     link_statement_list(circuit.body, true)
         .into_iter()
         .collect()
 }
 
+#[must_use]
 pub fn link_process(p: inst::Process) -> l::Process {
     l::Process {
         name: p.name,
         conditions: p.timed_blocks.into_iter()
-            .map(link_timed_block)
-            .flatten()
+            .flat_map(link_timed_block)
             .collect()
     }
 }
 
+#[must_use]
 pub fn link_timed_block(p: inst::TimedBlock) -> Vec<Condition> {
     let rest = link_statement_list(p.block.clone(), false).into_iter();
 
@@ -89,7 +91,7 @@ pub fn link_timed_block(p: inst::TimedBlock) -> Vec<Condition> {
         .filter_map(|i| match i {
             Statement::Set(a, b) => Some(Condition::AtTime {
                 time: p.time,
-                run: Rc::new(l::Statement::Set(a, b.clone()))
+                run: Rc::new(l::Statement::Set(a, b))
             }),
             Statement::Assert(e, span) => Some(Condition::AtTime {
                 time: p.time.add_process_step(),

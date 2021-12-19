@@ -15,4 +15,4 @@ peekmore = "1.0.0"
 vcd = "0.6.1"
 
 [dev-dependencies]
-bnf = "0.3"
+bnf = {path="../bnf"}

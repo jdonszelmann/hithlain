@@ -60,25 +60,25 @@ impl Simulator {
     pub fn run_test(&self, name: impl AsRef<str>) -> Result<(), SimulationError> {
         for i in &self.program.tests {
             if i.name.0 == name.as_ref() {
-                self._run_test(i.clone())?;
+                self._run_test(i)?;
             }
         }
         Ok(())
     }
 
-    fn _run_test(&self, test: Rc<Process>) -> Result<(), SimulationError> {
+    fn _run_test(&self, test: &Rc<Process>) -> Result<(), SimulationError> {
         self.execute_process(test)
     }
 
     pub fn run_all_tests(&self) -> Result<(), SimulationError> {
         for i in &self.program.tests {
-            self._run_test(i.clone())?;
+            self._run_test(i)?;
         }
 
         Ok(())
     }
 
-    fn execute_process(&self, test: Rc<Process>) -> Result<(), SimulationError> {
+    fn execute_process(&self, test: &Rc<Process>) -> Result<(), SimulationError> {
         let instantiated = instantiate_program(test);
 
         let vcd_ast = if self.config.create_vcd {
@@ -105,7 +105,7 @@ mod tests {
     use crate::parse::parser::Parser;
     use crate::parse::source::Source;
     use crate::sim::Simulator;
-    use crate::sim::config::{SimulationConfig, VcdPath};
+    use crate::sim::config::{SimulationConfig};
 
     #[test]
     fn test_smoke() {
@@ -146,34 +146,34 @@ mod tests {
     #[test]
     fn test_add() {
         let src = "
-        circuit add: a b c-in -> o c-out {
-            o = a xor b xor c-in;
-            c-out = (a and b) or ((a xor b) and c-in);
+        circuit add: a b c_in -> o c_out {
+            o = a xor b xor c_in;
+            c_out = (a and b) or ((a xor b) and c_in);
         }
 
         test main {
-            o, c-out = add(a, b, 0);
+            o, c_out = add(a, b, 0);
 
             at 0ns:
                 a = 1;
                 b = 1;
 
                 assert o == 0;
-                assert c-out == 1;
+                assert c_out == 1;
 
             after 5ns:
                 a = 0;
                 b = 0;
 
                 assert o == 0;
-                assert c-out == 0;
+                assert c_out == 0;
 
             after 5ns:
                 a = 1;
                 b = 0;
 
                 assert o == 1;
-                assert c-out == 0;
+                assert c_out == 0;
         }
         ";
 
@@ -184,7 +184,7 @@ mod tests {
 
         let desugared = desugar_program(parsed).nice_unwrap_panic();
 
-        let mut config = SimulationConfig::default();
+        let config = SimulationConfig::default();
         // config.vcd_path = VcdPath::Path("test.vcd".into());
         let s = Simulator::new(desugared, config).nice_unwrap_panic();
         s.run_all_tests().nice_unwrap_panic();

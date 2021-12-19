@@ -47,20 +47,20 @@ impl<'config> Simulation<'config> {
 
         let max_time = Instant::START;
 
-        for i in process.conditions.into_iter() {
+        for i in process.conditions {
             match i {
                 Condition::AtTime { time, run } => {
                     // println!("{:?} --> {:?}", time, run);
                     pq.push(Reverse(Signal {
-                        time: time.clone(),
+                        time,
                         action: run.clone()
-                    }))
+                    }));
                 }
                 Condition::WhenChanges { variable, run } => {
                     // println!("{:?} --> {:?}", variable, run);
                     map.entry(variable)
                         .and_modify(|i: &mut Vec<Rc<Statement>>| i.push(run.clone()))
-                        .or_insert(vec![run.clone()]);
+                        .or_insert_with(|| vec![run.clone()]);
                 }
             }
         }
@@ -72,7 +72,7 @@ impl<'config> Simulation<'config> {
         Ok(Self {
             pq,
             map,
-            store: Default::default(),
+            store: HashMap::default(),
             vcd,
             config,
             last_instant: Instant::START,
@@ -88,12 +88,7 @@ impl<'config> Simulation<'config> {
     }
 
     fn get_var(&self, var: &UniqueVariableRef) -> Option<Value> {
-        if let Some(i) = self.store.get(var) {
-            Some(i.clone())
-        } else {
-            // eprintln!("not set: {:?}, {:?}", name, store);
-            return None
-        }
+        self.store.get(var).cloned()
     }
 
     fn store_var(&mut self, var: &UniqueVariableRef, value: impl Into<Value>) {
@@ -141,7 +136,7 @@ impl<'config> Simulation<'config> {
             Statement::Not { input, into } => {
                 update!(input -> into {
                     !input
-                })
+                });
             }
             Statement::And(BinaryBuiltin{ a, b, into }) => {
                 update!(a, b -> into {
@@ -199,7 +194,7 @@ impl<'config> Simulation<'config> {
             // println!("{:?} modified variable {:?}", time, i);
             if let Some(value) = self.get_var(i) {
                 if let Some(ref mut gen) = self.vcd {
-                    gen.update_wire(i, value, time)?;
+                    gen.update_wire(i, &value, time)?;
                 }
             }
 
@@ -207,7 +202,7 @@ impl<'config> Simulation<'config> {
                 self.pq.push(Reverse(Signal {
                     time: time.add_delta(),
                     action: statement.clone(),
-                }))
+                }));
             }
         }
 
