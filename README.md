@@ -44,3 +44,7 @@ test main {
 
 Hithlain can compile programs and simulate them (generating a VCD file). I'm intending
 to also create a transpiler to both Verilog and VHDL.
+
+## naming
+
+Hithlain is the sindarin word for the material elvish ropes are made out of, which is given to Sam by Galadriel.
