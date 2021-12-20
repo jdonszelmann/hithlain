@@ -1,17 +1,16 @@
 use crate::parse::span::Span;
-use derivative::Derivative;
+use crate::sim::instantiated_ast::{LocalizedVariable, Package};
 use crate::time::{Duration, Instant};
-use crate::sim::instantiated_ast::{Package, LocalizedVariable};
+use derivative::Derivative;
 use std::rc::Rc;
 
 #[derive(Debug, Derivative, Clone)]
 #[derivative(PartialEq, Hash)]
-pub struct Variable (
+pub struct Variable(
     pub(crate) String,
-
-    #[derivative(PartialEq="ignore")]
-    #[derivative(Hash="ignore")]
-    pub(crate) Option<Span>
+    #[derivative(PartialEq = "ignore")]
+    #[derivative(Hash = "ignore")]
+    pub(crate) Option<Span>,
 );
 
 impl Variable {
@@ -51,7 +50,7 @@ pub enum BinaryAction {
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub enum UnaryAction {
-    Not
+    Not,
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -72,7 +71,7 @@ pub enum Expr {
         params: Vec<Expr>,
         action: NaryAction,
     },
-    Atom(Atom)
+    Atom(Atom),
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]
@@ -84,12 +83,8 @@ pub struct Assignment {
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub enum Statement {
     Assignment(Assignment),
-    Assert {
-        expr: Expr,
-        span: Span,
-    }
+    Assert { expr: Expr, span: Span },
 }
-
 
 #[derive(Debug, Eq, PartialEq, Hash)]
 pub enum TimeSpec {
@@ -132,5 +127,3 @@ pub struct Program {
     pub(crate) processes: Vec<Process>,
     pub(crate) tests: Vec<Test>,
 }
-
-

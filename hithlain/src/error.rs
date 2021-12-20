@@ -1,14 +1,14 @@
-use miette::{Diagnostic, GraphicalReportHandler};
-use thiserror::Error;
-use crate::parse::parser::ParseError;
 use crate::parse::desugar::DesugarError;
-use crate::vcd::VcdError;
-use crate::sim::SimulationError;
-use crate::parse::source::SourceError;
 use crate::parse::lexer::LexError;
+use crate::parse::parser::ParseError;
+use crate::parse::source::SourceError;
+use crate::sim::SimulationError;
 use crate::time::TimespecError;
+use crate::vcd::VcdError;
+use miette::{Diagnostic, GraphicalReportHandler};
 #[cfg(not(test))]
 use std::process::exit;
+use thiserror::Error;
 
 pub trait NiceUnwrap {
     type T;
@@ -17,7 +17,10 @@ pub trait NiceUnwrap {
     fn nice_unwrap(self) -> Self::T;
 }
 
-impl<T, E> NiceUnwrap for Result<T, E> where E: Diagnostic {
+impl<T, E> NiceUnwrap for Result<T, E>
+where
+    E: Diagnostic,
+{
     type T = T;
 
     fn nice_unwrap_panic(self) -> Self::T {
@@ -25,9 +28,12 @@ impl<T, E> NiceUnwrap for Result<T, E> where E: Diagnostic {
             Ok(i) => i,
             Err(e) => {
                 let mut s = String::new();
-                GraphicalReportHandler::new().with_links(true).render_report(&mut s, &e).unwrap();
+                GraphicalReportHandler::new()
+                    .with_links(true)
+                    .render_report(&mut s, &e)
+                    .unwrap();
                 panic!("{}", s)
-            },
+            }
         }
     }
 
@@ -36,14 +42,17 @@ impl<T, E> NiceUnwrap for Result<T, E> where E: Diagnostic {
             Ok(i) => i,
             Err(e) => {
                 let mut s = String::new();
-                GraphicalReportHandler::new().with_links(true).render_report(&mut s, &e).unwrap();
+                GraphicalReportHandler::new()
+                    .with_links(true)
+                    .render_report(&mut s, &e)
+                    .unwrap();
                 #[cfg(not(test))]
                 eprintln!("{}", s);
                 #[cfg(not(test))]
                 exit(1);
                 #[cfg(test)]
                 panic!("{}", s)
-            },
+            }
         }
     }
 }
@@ -52,10 +61,15 @@ pub trait Warn {
     fn warn(&self);
 }
 
-impl<E> Warn for E where E: Diagnostic {
+impl<E> Warn for E
+where
+    E: Diagnostic,
+{
     fn warn(&self) {
         let mut s = String::new();
-        GraphicalReportHandler::new().render_report(&mut s, self).unwrap();
+        GraphicalReportHandler::new()
+            .render_report(&mut s, self)
+            .unwrap();
         eprintln!("{}", s);
     }
 }

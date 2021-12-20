@@ -1,11 +1,11 @@
 use crate::parse::ast::{Constant, Variable};
-use crate::time::Instant;
 use crate::parse::desugared_ast as d;
+use crate::time::Instant;
 
-use crate::sim::instantiate::UniqueVariableRef;
 use crate::parse::span::Span;
-use std::rc::Rc;
+use crate::sim::instantiate::UniqueVariableRef;
 use derive_more::From;
+use std::rc::Rc;
 
 #[derive(From, Clone)]
 pub enum Package {
@@ -78,7 +78,5 @@ pub struct Process {
 }
 
 pub struct Program {
-
     pub(crate) tests: Vec<Process>,
 }
-

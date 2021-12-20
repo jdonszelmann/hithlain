@@ -1,8 +1,8 @@
-use std::rc::Rc;
-use crate::parse::scope::VariableRef;
 use crate::parse::ast::{Constant, Variable};
-use crate::time::Instant;
+use crate::parse::scope::VariableRef;
 use crate::parse::span::Span;
+use crate::time::Instant;
+use std::rc::Rc;
 
 #[derive(Clone)]
 pub struct BinaryBuiltin {
@@ -24,7 +24,7 @@ pub enum Statement {
     Nor(BinaryBuiltin),
     Xor(BinaryBuiltin),
     Xnor(BinaryBuiltin),
-    Custom{
+    Custom {
         inputs: Vec<VariableRef>,
         circuit: Rc<Circuit>,
         into: Vec<VariableRef>,
@@ -56,8 +56,6 @@ pub struct Process {
 }
 
 pub struct Program {
-
     pub(crate) circuits: Vec<Rc<Circuit>>,
     pub(crate) tests: Vec<Rc<Process>>,
 }
-

@@ -1,12 +1,12 @@
+use crate::parse::source::Source;
 use logos::Span as LogosSpan;
 use miette::SourceSpan;
-use crate::parse::source::Source;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Span {
     start: usize,
     length: usize,
-    source: Source
+    source: Source,
 }
 
 impl Span {
@@ -14,7 +14,7 @@ impl Span {
         Self {
             start: l.start,
             length: l.end - l.start,
-            source
+            source,
         }
     }
 
@@ -31,7 +31,7 @@ impl Span {
         Span {
             start,
             length: end - start,
-            source: self.source.clone()
+            source: self.source.clone(),
         }
     }
 

@@ -1,8 +1,8 @@
-use std::rc::Rc;
 use crate::parse::ast::{Constant, Variable};
-use crate::time::Instant;
-use crate::sim::instantiate::UniqueVariableRef;
 use crate::parse::span::Span;
+use crate::sim::instantiate::UniqueVariableRef;
+use crate::time::Instant;
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum Condition {
@@ -13,7 +13,7 @@ pub enum Condition {
     WhenChanges {
         variable: UniqueVariableRef,
         run: Rc<Statement>,
-    }
+    },
 }
 
 #[derive(Debug)]
@@ -41,15 +41,11 @@ pub enum Statement {
 }
 
 pub struct Process {
-
     pub(crate) name: Variable,
 
     pub(crate) conditions: Vec<Condition>,
 }
 
-
 pub struct Program {
-
     pub(crate) tests: Vec<Process>,
 }
-

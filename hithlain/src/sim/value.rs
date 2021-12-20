@@ -1,10 +1,10 @@
 use derive_more::From;
 
-use crate::sim::value::Value::Bit;
-use std::ops::{BitXor, BitAnd, BitOr, Not};
-use miette::{NamedSource, SourceSpan, Diagnostic};
-use thiserror::Error;
 use crate::parse::ast::Constant;
+use crate::sim::value::Value::Bit;
+use miette::{Diagnostic, NamedSource, SourceSpan};
+use std::ops::{BitAnd, BitOr, BitXor, Not};
+use thiserror::Error;
 
 #[derive(Debug, Error, Diagnostic)]
 pub enum ValueError {
@@ -24,16 +24,15 @@ pub struct TypeMismatch {
     span: SourceSpan,
 }
 
-
 #[derive(From, Debug, Clone)]
 pub enum Value {
-    Bit(bool)
+    Bit(bool),
 }
 
 impl From<Constant> for Value {
     fn from(c: Constant) -> Self {
         match c {
-            Constant::Bit(n) => Value::Bit(n)
+            Constant::Bit(n) => Value::Bit(n),
         }
     }
 }
@@ -41,7 +40,7 @@ impl From<Constant> for Value {
 impl From<&Constant> for Value {
     fn from(c: &Constant) -> Self {
         match c.clone() {
-            Constant::Bit(n) => Value::Bit(n)
+            Constant::Bit(n) => Value::Bit(n),
         }
     }
 }
@@ -51,7 +50,7 @@ impl BitXor for Value {
 
     fn bitxor(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            (Bit(a), Bit(b)) => Ok(Bit(a ^ b))
+            (Bit(a), Bit(b)) => Ok(Bit(a ^ b)),
         }
     }
 }
@@ -61,7 +60,7 @@ impl BitAnd for Value {
 
     fn bitand(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            (Bit(a), Bit(b)) => Ok(Bit(a & b))
+            (Bit(a), Bit(b)) => Ok(Bit(a & b)),
         }
     }
 }
@@ -71,7 +70,7 @@ impl BitOr for Value {
 
     fn bitor(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
-            (Bit(a), Bit(b)) => Ok(Bit(a | b))
+            (Bit(a), Bit(b)) => Ok(Bit(a | b)),
         }
     }
 }
@@ -81,7 +80,7 @@ impl Not for Value {
 
     fn not(self) -> Self::Output {
         match self {
-            Bit(a) => Ok(Bit(!a))
+            Bit(a) => Ok(Bit(!a)),
         }
     }
 }

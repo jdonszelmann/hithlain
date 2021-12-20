@@ -1,15 +1,12 @@
+use clap::{crate_authors, crate_description, crate_version};
 use clap::{App, Arg, SubCommand};
-use clap::{crate_version, crate_authors, crate_description};
-use hithlain::parse::lexer::lex;
-use hithlain::parse::source::Source;
-use hithlain::error::{NiceUnwrap};
-use hithlain::parse::parser::Parser;
+use hithlain::error::NiceUnwrap;
 use hithlain::parse::desugar::desugar_program;
-use hithlain::sim::Simulator;
+use hithlain::parse::lexer::lex;
+use hithlain::parse::parser::Parser;
+use hithlain::parse::source::Source;
 use hithlain::sim::config::{SimulationConfig, VcdPath};
-
-
-
+use hithlain::sim::Simulator;
 
 fn main() {
     let matches = App::new("Hithlain")
@@ -74,17 +71,13 @@ fn main() {
 
     let filename = matches.value_of("input").expect("input file required");
 
-
     let lexed = lex(&Source::file(filename).nice_unwrap()).nice_unwrap();
     let mut parser = Parser::new(lexed);
     let parsed = parser.parse_program().nice_unwrap();
     let desugared = desugar_program(&parsed).nice_unwrap();
 
-
     match matches.subcommand() {
-        ("transpile", _args) => {
-
-        }
+        ("transpile", _args) => {}
         ("simulate", Some(args)) => {
             let entrypoint = args.value_of("entry").expect("entry point required");
 
@@ -107,6 +100,6 @@ fn main() {
                 sim.run_all_tests().nice_unwrap();
             }
         }
-        (s, _) => unreachable!("no such subcommand: {}", s)
+        (s, _) => unreachable!("no such subcommand: {}", s),
     }
 }

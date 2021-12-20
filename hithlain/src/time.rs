@@ -1,6 +1,6 @@
-use vcd::TimescaleUnit;
-use thiserror::Error;
 use miette::Diagnostic;
+use thiserror::Error;
+use vcd::TimescaleUnit;
 
 #[derive(Debug, Eq, PartialEq, Hash, Copy, Clone)]
 pub struct Duration {
@@ -15,9 +15,7 @@ impl Duration {
 
     #[must_use]
     pub fn from_nanos(nanos: u64) -> Self {
-        Self {
-            nanos,
-        }
+        Self { nanos }
     }
 }
 
@@ -31,21 +29,35 @@ pub enum TimespecError {
 
 pub fn parse_timespec(spec: &str) -> Result<Duration, TimespecError> {
     if let Some(i) = spec.strip_suffix("ns") {
-        return Ok(Duration::from_nanos(i.parse::<u64>().map_err(|_| TimespecError::NotANumber(spec.to_string()))?))
+        return Ok(Duration::from_nanos(
+            i.parse::<u64>()
+                .map_err(|_| TimespecError::NotANumber(spec.to_string()))?,
+        ));
     }
     if let Some(i) = spec.strip_suffix("us") {
-        return Ok(Duration::from_nanos(i.parse::<u64>().map_err(|_| TimespecError::NotANumber(spec.to_string()))? * 1_000))
+        return Ok(Duration::from_nanos(
+            i.parse::<u64>()
+                .map_err(|_| TimespecError::NotANumber(spec.to_string()))?
+                * 1_000,
+        ));
     }
     if let Some(i) = spec.strip_suffix("ms") {
-        return Ok(Duration::from_nanos(i.parse::<u64>().map_err(|_| TimespecError::NotANumber(spec.to_string()))? * 1_000_000))
+        return Ok(Duration::from_nanos(
+            i.parse::<u64>()
+                .map_err(|_| TimespecError::NotANumber(spec.to_string()))?
+                * 1_000_000,
+        ));
     }
     if let Some(i) = spec.strip_suffix('s') {
-        return Ok(Duration::from_nanos(i.parse::<u64>().map_err(|_| TimespecError::NotANumber(spec.to_string()))? * 1_000_000_000))
+        return Ok(Duration::from_nanos(
+            i.parse::<u64>()
+                .map_err(|_| TimespecError::NotANumber(spec.to_string()))?
+                * 1_000_000_000,
+        ));
     }
 
     Err(TimespecError::InvalidSuffix(spec.to_string()))
 }
-
 
 #[derive(Debug, Eq, PartialEq, Hash, Copy, Clone, Ord, PartialOrd)]
 pub struct Instant {
@@ -53,7 +65,6 @@ pub struct Instant {
     process_steps: u64,
     deltas: u64,
 }
-
 
 impl Instant {
     pub const START: Instant = Instant::nanos_from_start(0);
@@ -72,7 +83,7 @@ impl Instant {
         Instant {
             nanos: self.nanos + d.nanos,
             process_steps: 0,
-            deltas: 0
+            deltas: 0,
         }
     }
     #[must_use]
@@ -81,7 +92,7 @@ impl Instant {
         Self {
             nanos: self.nanos,
             process_steps: self.process_steps,
-            deltas: self.deltas + 1
+            deltas: self.deltas + 1,
         }
     }
 
@@ -90,7 +101,7 @@ impl Instant {
         Self {
             nanos: self.nanos,
             process_steps: self.process_steps + 1,
-            deltas: 0
+            deltas: 0,
         }
     }
 

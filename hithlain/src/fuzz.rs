@@ -1,9 +1,8 @@
-use bnf::{Grammar};
-use crate::parse::lexer::lex;
-use crate::parse::source::Source;
-use crate::parse::parser::Parser;
 use crate::error::NiceUnwrap;
-
+use crate::parse::lexer::lex;
+use crate::parse::parser::Parser;
+use crate::parse::source::Source;
+use bnf::Grammar;
 
 const GRAMMAR: &str = include_str!("grammar.bnf");
 
@@ -11,8 +10,11 @@ fn generate_sentence(g: &Grammar) -> String {
     loop {
         let res = g.generate_callback(|ident, value| match ident {
             "number" => value.len() < 10,
-            "name" => !["test", "circuit", "at", "every", "or", "and", "nor", "nand", "xor", "xnor", "not"].contains(&value),
-            _ => true
+            "name" => ![
+                "test", "circuit", "at", "every", "or", "and", "nor", "nand", "xor", "xnor", "not",
+            ]
+            .contains(&value),
+            _ => true,
         });
         match res {
             Ok(i) => break i,
@@ -21,7 +23,6 @@ fn generate_sentence(g: &Grammar) -> String {
         }
     }
 }
-
 
 #[test]
 fn test_fuzz() {
@@ -35,7 +36,7 @@ fn test_fuzz() {
     for _ in 0..5000 {
         let sentence = generate_sentence(&grammar);
 
-        let lexed = lex(Source::test(&sentence)).nice_unwrap_panic();
+        let lexed = lex(&Source::test(&sentence)).nice_unwrap_panic();
         let mut parser = Parser::new(lexed);
 
         if let Err(e) = parser.parse_program() {

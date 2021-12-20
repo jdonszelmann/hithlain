@@ -1,6 +1,6 @@
-use crate::sim::instantiate::UniqueVariableRef;
-use crate::sim::instantiated_ast::{Process, TimedBlock, Statement, BinaryBuiltin, Circuit};
 use crate::parse::ast::Variable;
+use crate::sim::instantiate::UniqueVariableRef;
+use crate::sim::instantiated_ast::{BinaryBuiltin, Circuit, Process, Statement, TimedBlock};
 use std::collections::HashSet;
 
 pub struct VcdModule {
@@ -28,9 +28,15 @@ pub fn process_to_vcd_ast(process: &Process) -> VcdModule {
 
     VcdModule {
         name: process.name.clone(),
-        variables: variables.into_iter()
+        variables: variables
+            .into_iter()
             .filter(|i| !i.generated)
-            .filter(|i| i.original.path.last().map_or(false, |i| i.name() == &process.name))
+            .filter(|i| {
+                i.original
+                    .path
+                    .last()
+                    .map_or(false, |i| i.name() == &process.name)
+            })
             .collect(),
         submodules,
     }
@@ -53,40 +59,52 @@ pub fn circuit_to_vcd_ast(circuit: &Circuit) -> VcdModule {
         analyze_statement(i, &mut variables, &mut submodules);
     }
 
-
     VcdModule {
         name: circuit.name.clone(),
-        variables: variables.into_iter()
+        variables: variables
+            .into_iter()
             .filter(|i| !i.generated)
-            .filter(|i| i.original.path.last().map_or(false, |i| i.name() == &circuit.name))
+            .filter(|i| {
+                i.original
+                    .path
+                    .last()
+                    .map_or(false, |i| i.name() == &circuit.name)
+            })
             .collect(),
         submodules,
     }
 }
 
-fn analyze_timed_block(t: &TimedBlock, variables: &mut HashSet<UniqueVariableRef>, submodules: &mut Vec<VcdModule>){
+fn analyze_timed_block(
+    t: &TimedBlock,
+    variables: &mut HashSet<UniqueVariableRef>,
+    submodules: &mut Vec<VcdModule>,
+) {
     for i in &t.block {
         analyze_statement(i, variables, submodules);
     }
 }
 
-fn analyze_statement(s: &Statement, variables: &mut HashSet<UniqueVariableRef>, submodules: &mut Vec<VcdModule>) {
+fn analyze_statement(
+    s: &Statement,
+    variables: &mut HashSet<UniqueVariableRef>,
+    submodules: &mut Vec<VcdModule>,
+) {
     match s {
         Statement::Assert(v, _) => {
             variables.insert(v.clone());
-        },
+        }
         Statement::Not { input, into } => {
             variables.insert(input.clone());
             variables.insert(into.clone());
-        },
+        }
         Statement::And(a)
         | Statement::Or(a)
         | Statement::Nand(a)
         | Statement::Nor(a)
         | Statement::Xor(a)
-        | Statement::Xnor(a)
-        => {
-            let BinaryBuiltin{ a, b, into } = a;
+        | Statement::Xnor(a) => {
+            let BinaryBuiltin { a, b, into } = a;
             variables.insert(a.clone());
             variables.insert(b.clone());
             variables.insert(into.clone());

@@ -1,9 +1,12 @@
-use crate::parse::lexer::{TokenStream, Token, TokenIterator};
+use crate::parse::ast::{
+    Assignment, Atom, BinaryAction, Circuit, Constant, Expr, NaryAction, Process, Program,
+    Statement, StatementOrTime, Test, TimeSpec, UnaryAction, Variable,
+};
+use crate::parse::lexer::{Token, TokenIterator, TokenStream};
 use crate::parse::span::Span;
-use thiserror::Error;
-use crate::parse::ast::{Program, Circuit, Variable, Statement, Expr, Constant, Atom, BinaryAction, Process, StatementOrTime, TimeSpec, NaryAction, Test, UnaryAction, Assignment};
-use miette::{Diagnostic, SourceSpan, NamedSource};
 use crate::time::{Duration, Instant};
+use miette::{Diagnostic, NamedSource, SourceSpan};
+use thiserror::Error;
 
 #[derive(Error, Debug, Diagnostic)]
 pub enum ParseError {
@@ -33,7 +36,6 @@ pub struct UnexpectedToken {
     expected: String,
     found: Token,
 }
-
 
 #[derive(Error, Debug, Diagnostic)]
 #[error("invalid right side of expression")]
@@ -69,7 +71,11 @@ pub struct Parser {
     current_token: Option<Token>,
 }
 
-fn or_unexpected_end<T>(i: Option<T>, description: impl AsRef<str>, span: impl FnOnce() -> Span) -> Result<T, UnexpectedEnd> {
+fn or_unexpected_end<T>(
+    i: Option<T>,
+    description: impl AsRef<str>,
+    span: impl FnOnce() -> Span,
+) -> Result<T, UnexpectedEnd> {
     if let Some(i) = i {
         Ok(i)
     } else {
@@ -82,7 +88,6 @@ fn or_unexpected_end<T>(i: Option<T>, description: impl AsRef<str>, span: impl F
         });
     }
 }
-
 
 impl Parser {
     #[must_use]
@@ -105,7 +110,6 @@ impl Parser {
                 self.previous_span = Some(spn.clone());
             }
 
-
             self.current_span = Some(spn.clone());
             self.current_token = Some(tok.clone());
         }
@@ -121,17 +125,22 @@ impl Parser {
     }
 
     fn previous_span(&self) -> Span {
-        self.previous_span.clone().expect("there to be a previous span")
+        self.previous_span
+            .clone()
+            .expect("there to be a previous span")
     }
 
     fn current_span(&self) -> Span {
-        self.current_span.clone().expect("there to be a current span")
+        self.current_span
+            .clone()
+            .expect("there to be a current span")
     }
 
     fn current_token(&self) -> Token {
-        self.current_token.clone().expect("there to be a current token")
+        self.current_token
+            .clone()
+            .expect("there to be a current token")
     }
-
 
     fn allow_single_token(&mut self, t: &Token) {
         if let Some((tkn, _)) = self.peek() {
@@ -141,7 +150,11 @@ impl Parser {
         }
     }
 
-    fn expect_single_token(&mut self, t: &Token, description: Option<String>) -> Result<(), ParseError> {
+    fn expect_single_token(
+        &mut self,
+        t: &Token,
+        description: Option<String>,
+    ) -> Result<(), ParseError> {
         let mut spn = self.current_span();
         let (tkn, t_spn) = or_unexpected_end(self.peek(), "circuit name", || spn.clone())?;
         spn = t_spn.clone();
@@ -156,11 +169,18 @@ impl Parser {
             found: tkn.clone(),
             span: spn.clone().into(),
             src: spn.source().clone().into(),
-        }.into());
+        }
+        .into());
     }
 
     pub fn parse_variable(&mut self, description: Option<String>) -> Result<Variable, ParseError> {
-        let (tok, spn) = or_unexpected_end(self.peek().cloned(), description.clone().unwrap_or_else(|| "variable".to_string()), || self.previous_span())?;
+        let (tok, spn) = or_unexpected_end(
+            self.peek().cloned(),
+            description
+                .clone()
+                .unwrap_or_else(|| "variable".to_string()),
+            || self.previous_span(),
+        )?;
 
         if let Token::Name(name) = tok {
             let name = name;
@@ -172,12 +192,19 @@ impl Parser {
                 found: tok,
                 span: spn.clone().into(),
                 src: spn.source().clone().into(),
-            }.into());
+            }
+            .into());
         }
     }
 
     pub fn parse_constant(&mut self, description: Option<String>) -> Result<Constant, ParseError> {
-        let (tok, spn) = or_unexpected_end(self.peek().cloned(), description.clone().unwrap_or_else(|| "variable".to_string()), || self.previous_span())?;
+        let (tok, spn) = or_unexpected_end(
+            self.peek().cloned(),
+            description
+                .clone()
+                .unwrap_or_else(|| "variable".to_string()),
+            || self.previous_span(),
+        )?;
 
         if let Token::Bit(value) = tok {
             self.next();
@@ -188,7 +215,8 @@ impl Parser {
                 found: tok,
                 span: spn.clone().into(),
                 src: spn.source().clone().into(),
-            }.into())
+            }
+            .into())
         }
     }
 
@@ -212,7 +240,8 @@ impl Parser {
                 found: self.current_token(),
                 span: self.current_span().into(),
                 src: self.current_span().source().clone().into(),
-            }.into());
+            }
+            .into());
         }
     }
 
@@ -235,11 +264,14 @@ impl Parser {
 
             let right_side = match self.parse_atom() {
                 Ok(i) => i,
-                Err(e) => return Err(RightSideOfExpr {
-                    src: spn.source().clone().into(),
-                    inner: vec![e],
-                    span: spn.clone().into(),
-                }.into()),
+                Err(e) => {
+                    return Err(RightSideOfExpr {
+                        src: spn.source().clone().into(),
+                        inner: vec![e],
+                        span: spn.clone().into(),
+                    }
+                    .into())
+                }
             };
 
             root = Expr::BinaryOp {
@@ -259,7 +291,11 @@ impl Parser {
         let mut params = vec![self.parse_atom()?];
 
         loop {
-            let (tok, _) = or_unexpected_end(self.peek().cloned(), "statement or time specification", || self.previous_span())?;
+            let (tok, _) = or_unexpected_end(
+                self.peek().cloned(),
+                "statement or time specification",
+                || self.previous_span(),
+            )?;
             if tok == Token::Comma {
                 self.next();
 
@@ -270,7 +306,6 @@ impl Parser {
         }
 
         self.expect_single_token(&Token::RParen, Some("closing parenthesis".to_string()))?;
-
 
         Ok(Expr::NaryOp {
             params,
@@ -292,12 +327,9 @@ impl Parser {
                 let param = self.parse_atom()?;
                 self.expect_single_token(&Token::RParen, None)?;
 
-
                 return Ok(Expr::NaryOp {
                     params: vec![param],
-                    action: NaryAction::UnaryAction(
-                        UnaryAction::Not
-                    ),
+                    action: NaryAction::UnaryAction(UnaryAction::Not),
                 });
             }
         }
@@ -320,36 +352,45 @@ impl Parser {
             }
         }
 
-
-        let mut vars = vec![self.parse_variable(Some("a variable to assign the expression outcome to".to_string()))?];
+        let mut vars = vec![self.parse_variable(Some(
+            "a variable to assign the expression outcome to".to_string(),
+        ))?];
 
         loop {
-            let (tok, _) = or_unexpected_end(self.peek().cloned(), "statement or time specification", || self.previous_span())?;
+            let (tok, _) = or_unexpected_end(
+                self.peek().cloned(),
+                "statement or time specification",
+                || self.previous_span(),
+            )?;
             if tok == Token::Comma {
                 self.next();
 
-                vars.push(self.parse_variable(Some("another variable to assign the expression outcome to".to_string()))?);
+                vars.push(self.parse_variable(Some(
+                    "another variable to assign the expression outcome to".to_string(),
+                ))?);
             } else {
                 break;
             }
         }
 
-
         self.expect_single_token(&Token::Assignment, None)?;
 
         let expr = self.parse_expr()?;
 
-        self.expect_single_token(&Token::SemiColon, Some("`;` or binary operator".to_string()))?;
+        self.expect_single_token(
+            &Token::SemiColon,
+            Some("`;` or binary operator".to_string()),
+        )?;
 
-
-        Ok(Statement::Assignment(Assignment {
-            into: vars,
-            expr,
-        }))
+        Ok(Statement::Assignment(Assignment { into: vars, expr }))
     }
 
     pub fn parse_statement_or_time(&mut self) -> Result<StatementOrTime, ParseError> {
-        let (tok, _) = or_unexpected_end(self.peek().cloned(), "statement or time specification", || self.previous_span())?;
+        let (tok, _) = or_unexpected_end(
+            self.peek().cloned(),
+            "statement or time specification",
+            || self.previous_span(),
+        )?;
 
         let (tkn, spn) = match tok {
             Token::After => {
@@ -363,7 +404,9 @@ impl Parser {
 
                     self.expect_single_token(&Token::Colon, None)?;
 
-                    return Ok(StatementOrTime::Time(TimeSpec::After(Duration::from_nanos(a))));
+                    return Ok(StatementOrTime::Time(TimeSpec::After(
+                        Duration::from_nanos(a),
+                    )));
                 }
 
                 (tkn, spn)
@@ -379,12 +422,14 @@ impl Parser {
 
                     self.expect_single_token(&Token::Colon, None)?;
 
-                    return Ok(StatementOrTime::Time(TimeSpec::At(Instant::nanos_from_start(a))));
+                    return Ok(StatementOrTime::Time(TimeSpec::At(
+                        Instant::nanos_from_start(a),
+                    )));
                 }
 
                 (tkn, spn)
             }
-            _ => return Ok(StatementOrTime::Statement(self.parse_statement()?))
+            _ => return Ok(StatementOrTime::Statement(self.parse_statement()?)),
         };
 
         Err(UnexpectedToken {
@@ -392,7 +437,8 @@ impl Parser {
             found: tkn.clone(),
             span: spn.clone().into(),
             src: spn.source().clone().into(),
-        }.into())
+        }
+        .into())
     }
 
     pub fn parse_io(&mut self) -> Result<(Vec<Variable>, Vec<Variable>), ParseError> {
@@ -406,7 +452,7 @@ impl Parser {
                     self.next();
                     break;
                 }
-                (_, _) => inputs.push(self.parse_variable(Some("input name or ->".to_string()))?)
+                (_, _) => inputs.push(self.parse_variable(Some("input name or ->".to_string()))?),
             }
 
             self.allow_single_token(&Token::Comma);
@@ -419,7 +465,7 @@ impl Parser {
                     self.next();
                     break;
                 }
-                (_, _) => outputs.push(self.parse_variable(Some("output name or {".to_string()))?)
+                (_, _) => outputs.push(self.parse_variable(Some("output name or {".to_string()))?),
             }
 
             self.allow_single_token(&Token::Comma);
@@ -448,12 +494,15 @@ impl Parser {
                 return Err(UnexpectedToken {
                     src: spn.source().clone().into(),
                     span: spn.clone().into(),
-                    expected: format!("`:` followed by inputs and outputs, or body of circuit {}", name.0),
+                    expected: format!(
+                        "`:` followed by inputs and outputs, or body of circuit {}",
+                        name.0
+                    ),
                     found: tok.clone(),
-                }.into());
+                }
+                .into());
             }
         };
-
 
         let mut body = Vec::new();
 
@@ -468,7 +517,6 @@ impl Parser {
             }
         }
 
-
         Ok(Circuit {
             name,
             inputs,
@@ -476,7 +524,6 @@ impl Parser {
             body,
         })
     }
-
 
     pub fn parse_process(&mut self) -> Result<Process, ParseError> {
         self.next();
@@ -524,10 +571,7 @@ impl Parser {
             }
         }
 
-        Ok(Test {
-            name,
-            body,
-        })
+        Ok(Test { name, body })
     }
 
     pub fn parse_program(&mut self) -> Result<Program, ParseError> {
@@ -552,7 +596,8 @@ impl Parser {
                         found: i.clone(),
                         span: spn.clone().into(),
                         src: spn.source().clone().into(),
-                    }.into());
+                    }
+                    .into());
                 }
             }
         }
@@ -567,10 +612,10 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::parse::lexer::lex;
     use crate::error::NiceUnwrap;
-    use crate::parse::source::Source;
+    use crate::parse::lexer::lex;
     use crate::parse::parser::Parser;
+    use crate::parse::source::Source;
 
     #[test]
     fn test_smoke() {
@@ -597,10 +642,9 @@ mod tests {
         }
         ";
 
-        let lexed = lex(Source::test(src)).nice_unwrap_panic();
+        let lexed = lex(&Source::test(src)).nice_unwrap_panic();
         let mut parser = Parser::new(lexed);
 
         parser.parse_program().nice_unwrap_panic();
     }
 }
-

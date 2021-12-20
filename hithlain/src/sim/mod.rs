@@ -1,31 +1,26 @@
-
-
-
-
-use miette::{Diagnostic};
+use miette::Diagnostic;
 use thiserror::Error;
 
 use simulation::{AssertionError, Simulation, SimulationState};
 
-use crate::parse::desugared_ast::{Program, Process};
+use crate::parse::desugared_ast::{Process, Program};
 
-use crate::sim::value::ValueError;
 use crate::sim::config::SimulationConfig;
-use crate::vcd::{VcdError};
-use std::rc::Rc;
 use crate::sim::instantiate::instantiate_program;
-use crate::vcd::vcd_ast::process_to_vcd_ast;
 use crate::sim::link::link_process;
+use crate::sim::value::ValueError;
+use crate::vcd::vcd_ast::process_to_vcd_ast;
+use crate::vcd::VcdError;
+use std::rc::Rc;
 
-
-pub mod link;
-pub mod linked_ast;
+pub mod config;
 pub mod instantiate;
 pub mod instantiated_ast;
-pub mod value;
+pub mod link;
+pub mod linked_ast;
 pub mod signal;
 pub mod simulation;
-pub mod config;
+pub mod value;
 
 #[derive(Debug, Error, Diagnostic)]
 pub enum SimulationError {
@@ -39,7 +34,7 @@ pub enum SimulationError {
 
     #[error(transparent)]
     #[diagnostic(transparent)]
-    VcdError(#[from] VcdError)
+    VcdError(#[from] VcdError),
 }
 
 pub struct Simulator {
@@ -50,11 +45,7 @@ pub struct Simulator {
 
 impl Simulator {
     pub fn new(program: Program, config: SimulationConfig) -> Result<Self, SimulationError> {
-
-        Ok(Self {
-            program,
-            config
-        })
+        Ok(Self { program, config })
     }
 
     pub fn run_test(&self, name: impl AsRef<str>) -> Result<(), SimulationError> {
@@ -96,7 +87,6 @@ impl Simulator {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::error::NiceUnwrap;
@@ -104,8 +94,8 @@ mod tests {
     use crate::parse::lexer::lex;
     use crate::parse::parser::Parser;
     use crate::parse::source::Source;
+    use crate::sim::config::SimulationConfig;
     use crate::sim::Simulator;
-    use crate::sim::config::{SimulationConfig};
 
     #[test]
     fn test_smoke() {
@@ -132,12 +122,12 @@ mod tests {
         }
         ";
 
-        let lexed = lex(Source::test(src)).nice_unwrap_panic();
+        let lexed = lex(&Source::test(src)).nice_unwrap_panic();
         let mut parser = Parser::new(lexed);
 
         let parsed = parser.parse_program().nice_unwrap_panic();
 
-        let desugared = desugar_program(parsed).nice_unwrap_panic();
+        let desugared = desugar_program(&parsed).nice_unwrap_panic();
 
         let s = Simulator::new(desugared, SimulationConfig::default()).nice_unwrap_panic();
         s.run_all_tests().nice_unwrap_panic();
@@ -177,12 +167,12 @@ mod tests {
         }
         ";
 
-        let lexed = lex(Source::test(src)).nice_unwrap_panic();
+        let lexed = lex(&Source::test(src)).nice_unwrap_panic();
         let mut parser = Parser::new(lexed);
 
         let parsed = parser.parse_program().nice_unwrap_panic();
 
-        let desugared = desugar_program(parsed).nice_unwrap_panic();
+        let desugared = desugar_program(&parsed).nice_unwrap_panic();
 
         let config = SimulationConfig::default();
         // config.vcd_path = VcdPath::Path("test.vcd".into());

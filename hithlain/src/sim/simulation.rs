@@ -2,18 +2,18 @@ use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap};
 use std::rc::Rc;
 
-use miette::{NamedSource, SourceSpan, Diagnostic};
+use miette::{Diagnostic, NamedSource, SourceSpan};
 use thiserror::Error;
 
+use crate::sim::config::SimulationConfig;
 use crate::sim::instantiate::UniqueVariableRef;
 use crate::sim::linked_ast::{BinaryBuiltin, Condition, Process, Statement};
 use crate::sim::signal::Signal;
-use crate::sim::SimulationError;
 use crate::sim::value::Value;
+use crate::sim::SimulationError;
 use crate::time::Instant;
-use crate::sim::config::SimulationConfig;
-use crate::vcd::VcdGenerator;
 use crate::vcd::vcd_ast::VcdModule;
+use crate::vcd::VcdGenerator;
 
 #[derive(Error, Debug, Diagnostic)]
 #[error("assertion failed")]
@@ -25,7 +25,6 @@ pub struct AssertionError {
     #[label("here")]
     span: SourceSpan,
 }
-
 
 pub struct Simulation<'config> {
     pq: BinaryHeap<Reverse<Signal>>,
@@ -39,9 +38,12 @@ pub struct Simulation<'config> {
     last_instant: Instant,
 }
 
-
 impl<'config> Simulation<'config> {
-    pub fn new(process: Process, config: &'config SimulationConfig, vcd_ast: Option<VcdModule>) -> Result<Self, SimulationError> {
+    pub fn new(
+        process: Process,
+        config: &'config SimulationConfig,
+        vcd_ast: Option<VcdModule>,
+    ) -> Result<Self, SimulationError> {
         let mut map = HashMap::new();
         let mut pq = BinaryHeap::new();
 
@@ -53,7 +55,7 @@ impl<'config> Simulation<'config> {
                     // println!("{:?} --> {:?}", time, run);
                     pq.push(Reverse(Signal {
                         time,
-                        action: run.clone()
+                        action: run.clone(),
                     }));
                 }
                 Condition::WhenChanges { variable, run } => {
@@ -65,9 +67,9 @@ impl<'config> Simulation<'config> {
             }
         }
 
-        let vcd = vcd_ast.map(|ast| {
-            VcdGenerator::new(&config.vcd_path, max_time.vcd_scale(), ast)
-        }).transpose()?;
+        let vcd = vcd_ast
+            .map(|ast| VcdGenerator::new(&config.vcd_path, max_time.vcd_scale(), ast))
+            .transpose()?;
 
         Ok(Self {
             pq,
@@ -95,7 +97,10 @@ impl<'config> Simulation<'config> {
         self.store.insert(var.clone(), value.into());
     }
 
-    fn handle_signal<'action>(&mut self, action: &'action Statement) -> Result<Vec<&'action UniqueVariableRef>, SimulationError> {
+    fn handle_signal<'action>(
+        &mut self,
+        action: &'action Statement,
+    ) -> Result<Vec<&'action UniqueVariableRef>, SimulationError> {
         let mut modified_variables = Vec::new();
 
         macro_rules! update {
@@ -138,32 +143,32 @@ impl<'config> Simulation<'config> {
                     !input
                 });
             }
-            Statement::And(BinaryBuiltin{ a, b, into }) => {
+            Statement::And(BinaryBuiltin { a, b, into }) => {
                 update!(a, b -> into {
                     a & b
                 });
             }
-            Statement::Or(BinaryBuiltin{ a, b, into }) => {
+            Statement::Or(BinaryBuiltin { a, b, into }) => {
                 update!(a, b -> into {
                     a | b
                 });
             }
-            Statement::Nand(BinaryBuiltin{ a, b, into }) => {
+            Statement::Nand(BinaryBuiltin { a, b, into }) => {
                 update!(a, b -> into {
                     !(a & b)?
                 });
             }
-            Statement::Nor(BinaryBuiltin{ a, b, into }) => {
+            Statement::Nor(BinaryBuiltin { a, b, into }) => {
                 update!(a, b -> into {
                     !(a | b)?
                 });
             }
-            Statement::Xor(BinaryBuiltin{ a, b, into }) => {
+            Statement::Xor(BinaryBuiltin { a, b, into }) => {
                 update!(a, b -> into {
                     a ^ b
                 });
             }
-            Statement::Xnor(BinaryBuiltin{ a, b, into }) => {
+            Statement::Xnor(BinaryBuiltin { a, b, into }) => {
                 update!(a, b -> into {
                     !(a ^ b)?
                 });
@@ -189,7 +194,11 @@ impl<'config> Simulation<'config> {
         Ok(modified_variables)
     }
 
-    pub fn update_queue(&mut self, modified_variables: Vec<&UniqueVariableRef>, time: Instant) -> Result<(), SimulationError> {
+    pub fn update_queue(
+        &mut self,
+        modified_variables: Vec<&UniqueVariableRef>,
+        time: Instant,
+    ) -> Result<(), SimulationError> {
         for i in modified_variables {
             // println!("{:?} modified variable {:?}", time, i);
             if let Some(value) = self.get_var(i) {
@@ -210,7 +219,7 @@ impl<'config> Simulation<'config> {
     }
 
     pub fn step(&mut self) -> Result<SimulationState, SimulationError> {
-        if let Some(Reverse(Signal{ time, action })) = self.pq.pop() {
+        if let Some(Reverse(Signal { time, action })) = self.pq.pop() {
             // println!("{:?}", action);
             let modified_variables = self.handle_signal(&action)?;
             self.update_queue(modified_variables, time)?;

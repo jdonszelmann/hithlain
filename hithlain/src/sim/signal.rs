@@ -1,11 +1,11 @@
-use crate::time::Instant;
-use std::rc::Rc;
 use crate::sim::linked_ast::Statement;
+use crate::time::Instant;
 use std::cmp::Ordering;
+use std::rc::Rc;
 
 pub struct Signal {
     pub(crate) time: Instant,
-    pub(crate) action: Rc<Statement>
+    pub(crate) action: Rc<Statement>,
 }
 
 impl PartialEq<Self> for Signal {
@@ -21,7 +21,6 @@ impl PartialOrd for Signal {
 }
 
 impl Eq for Signal {}
-
 
 impl Ord for Signal {
     fn cmp(&self, other: &Self) -> Ordering {

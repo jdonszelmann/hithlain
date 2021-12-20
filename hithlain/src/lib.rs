@@ -3,9 +3,9 @@
 #![allow(clippy::implicit_hasher)]
 #![allow(clippy::missing_errors_doc)]
 
-pub mod sim;
-pub mod parse;
 pub mod error;
+pub mod parse;
+pub mod sim;
 pub mod time;
 pub mod vcd;
 
@@ -18,6 +18,3 @@ pub mod fuzz;
 // mod vhdl;
 // TODO: verilog translation
 // mod verilog;
-
-
-
