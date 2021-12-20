@@ -6,6 +6,7 @@
       <sourceFolder url="file://$MODULE_DIR$/hithlain/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bnf/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/bnf/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/hithlain-lsp/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/hithlain-bin/target" />
     </content>

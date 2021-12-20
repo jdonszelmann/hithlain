@@ -1,4 +1,4 @@
 
 [workspace]
-members = ["hithlain", "hithlain-bin"]
-default-members = ["hithlain", "hithlain-bin"]
+members = ["hithlain", "hithlain-bin", "hithlain-lsp"]
+default-members = ["hithlain", "hithlain-bin", "hithlain-lsp"]
