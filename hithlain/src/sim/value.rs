@@ -33,6 +33,7 @@ impl From<Constant> for Value {
     fn from(c: Constant) -> Self {
         match c {
             Constant::Bit(n) => Value::Bit(n),
+            _ => todo!()
         }
     }
 }
@@ -41,6 +42,7 @@ impl From<&Constant> for Value {
     fn from(c: &Constant) -> Self {
         match c.clone() {
             Constant::Bit(n) => Value::Bit(n),
+            _ => todo!()
         }
     }
 }

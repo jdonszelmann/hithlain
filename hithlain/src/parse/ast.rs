@@ -28,6 +28,7 @@ impl Eq for Variable {}
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub enum Constant {
     Bit(bool),
+    Number(u64),
 }
 
 #[derive(Debug, Eq, PartialEq, Hash)]

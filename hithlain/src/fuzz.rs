@@ -33,7 +33,7 @@ fn test_fuzz() {
         }
     };
 
-    for _ in 0..5000 {
+    for _ in 0..1000 {
         let sentence = generate_sentence(&grammar);
 
         let lexed = lex(&Source::test(&sentence)).nice_unwrap_panic();

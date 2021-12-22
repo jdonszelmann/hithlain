@@ -3,6 +3,7 @@
 circuit add: a b c_in -> o c_out {
     o = a xor b xor c_in;
     c_out = (a and b) or ((a xor b) and c_in);
+    x = 3;
 }
 
 test main {

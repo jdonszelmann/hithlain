@@ -17,7 +17,7 @@
 <timeunit> ::= "ns" | "us" | "ms" | "s"
 <time> ::= <number> <timeunit>
 
-<constant> ::= <01>
+<constant> ::= <01> | <09>
 <atom> ::=
     <constant>
   | <name>

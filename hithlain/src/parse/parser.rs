@@ -209,6 +209,9 @@ impl Parser {
         if let Token::Bit(value) = tok {
             self.next();
             Ok(Constant::Bit(value))
+        } else if let Token::Number(value) = tok {
+            self.next();
+            Ok(Constant::Number(value))
         } else {
             Err(UnexpectedToken {
                 expected: description.unwrap_or_else(|| "variable".to_string()),
@@ -221,6 +224,9 @@ impl Parser {
     }
 
     pub fn parse_atom(&mut self) -> Result<Expr, ParseError> {
+        let tok = self.peek();
+        dbg!(tok);
+
         if let Ok(i) = self.parse_variable(None) {
             Ok(Expr::Atom(Atom::Variable(i)))
         } else if let Ok(i) = self.parse_constant(None) {
@@ -640,6 +646,20 @@ mod tests {
 
                 // assert x == 0
         }
+        ";
+
+        let lexed = lex(&Source::test(src)).nice_unwrap_panic();
+        let mut parser = Parser::new(lexed);
+
+        parser.parse_program().nice_unwrap_panic();
+    }
+
+    #[test]
+    fn number_constants() {
+        let src = "
+circuit a {
+    x = 3;
+}
         ";
 
         let lexed = lex(&Source::test(src)).nice_unwrap_panic();
